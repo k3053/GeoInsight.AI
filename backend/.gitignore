@@ -3,3 +3,4 @@ venv/
 pycache
 logs/
 *.pyc
+GeoInsight.AI.egg-info
