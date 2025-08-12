@@ -30,7 +30,6 @@ A Python-based backend service for GeoInsight.AI, providing document processing,
    ```bash
    uv venv
    uv pip install -r requirements.txt
-   uv pip install -e .
    ```
 
 4. **Activate virtual environment**:
