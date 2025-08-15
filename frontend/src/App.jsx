@@ -1,18 +1,18 @@
-// src/App.js
-import Header from '../components/Header';
-import MapSection from '../components/MapSection';
-import AnalyticsSidebar from '../components/AnalyticsSidebar';
-import ChatInput from '../components/ChatInput';
+import React from 'react';
+import { Provider } from 'react-redux';
+import store from './store/dashboardSlice';
+import Header from './components2/Header';
+import HomePage from './pages/HomePage';
 
 export default function App() {
   return (
-    <div className="w-full h-screen bg-white flex flex-col font-sans">
-      <Header />
-      <main className="flex flex-1 overflow-hidden">
-        <MapSection />
-        <AnalyticsSidebar />
-      </main>
-      <ChatInput />
-    </div>
+    <Provider store={store}>
+      <div className="min-h-screen bg-gradient-to-br from-[var(--geo-bg-dark)] to-[var(--geo-bg-light)] text-[var(--geo-text-light)]">
+        <Header />
+        <main className="animate-fadeUp">
+          <HomePage />
+        </main>
+      </div>
+    </Provider>
   );
 }
