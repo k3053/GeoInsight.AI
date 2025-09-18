@@ -1,11 +1,17 @@
 import React from 'react';
-import { FaUsers, FaLeaf, FaWind } from "react-icons/fa";
 import { useDispatch, useSelector } from 'react-redux';
-import { setFilter } from '../store/dashboardSlice';
+import { setFilter } from '../store/dashboardSlice'; // Action to set the filter in Redux
+import { FaWind, FaUsers, FaLeaf } from 'react-icons/fa';
 
 const Filters = ({ locationSelected }) => {
   const dispatch = useDispatch();
-  const filters = useSelector((state) => state.dashboard.filters);
+  const selectedFilter = useSelector((state) => state.dashboard.selectedFilter);
+  
+  const filters = [
+    "Air Quality Index",
+    "Population Density",
+    "% of GreenCover"
+  ];
   
   const icons = {
     "Air Quality Index": <FaWind />,
@@ -18,20 +24,24 @@ const Filters = ({ locationSelected }) => {
       alert("Please select a location first.");
       return;
     }
-    dispatch(setFilter(filter));
+    // Toggle the filter: deselect it if it's already selected.
+    if (selectedFilter === filter) {
+      dispatch(setFilter(null));
+    } else {
+      dispatch(setFilter(filter));
+    }
   };
 
   return (
-    <div className="flex flex-row gap-2">
+    <div className="flex space-x-2">
       {filters.map((filter) => (
         <button
           key={filter}
-          disabled={!locationSelected}
           onClick={() => handleClick(filter)}
-          className={`flex items-center gap-2 p-2 bg-white rounded ${
-            locationSelected 
-            ? "hover:bg-[var(--geo-accent)] cursor-pointer"
-            : "opacity-90 cursor-not-allowed"
+          className={`flex items-center gap-1 px-3 py-2 rounded border transition-colors ${
+            selectedFilter === filter 
+              ? "bg-[var(--geo-accent)] text-black border-[var(--geo-accent)]"
+              : "bg-white text-black hover:bg-blue-100"
           }`}
         >
           {icons[filter]} {filter}
