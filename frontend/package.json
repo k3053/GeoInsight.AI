@@ -15,10 +15,13 @@
     "@reduxjs/toolkit": "^2.8.2",
     "@tailwindcss/vite": "^4.1.12",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.544.0",
+    "mapbox-gl": "^3.15.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
+    "react-map-gl": "^6.1.21",
     "react-redux": "^9.2.0",
     "tailwindcss": "^4.1.12"
   },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setFilter } from '../store/dashboardSlice'; // Action to set the filter in Redux
-import { FaWind, FaUsers, FaLeaf } from 'react-icons/fa';
+import { FaWind, FaUsers, FaLeaf, FaBuilding } from 'react-icons/fa';
 
 const Filters = ({ locationSelected }) => {
   const dispatch = useDispatch();
@@ -10,13 +10,13 @@ const Filters = ({ locationSelected }) => {
   const filters = [
     "Air Quality Index",
     "Population Density",
-    "% of GreenCover"
+    "Number of Buildings"
   ];
   
   const icons = {
     "Air Quality Index": <FaWind />,
     "Population Density": <FaUsers />,
-    "% of GreenCover": <FaLeaf />,
+    "Number of Buildings": <FaBuilding />,
   };
 
   const handleClick = (filter) => {
@@ -33,15 +33,15 @@ const Filters = ({ locationSelected }) => {
   };
 
   return (
-    <div className="flex space-x-2">
+    <div className="flex space-x-0 text-[14px]">
       {filters.map((filter) => (
         <button
           key={filter}
           onClick={() => handleClick(filter)}
-          className={`flex items-center gap-1 px-3 py-2 rounded border transition-colors ${
-            selectedFilter === filter 
-              ? "bg-[var(--geo-accent)] text-black border-[var(--geo-accent)]"
-              : "bg-white text-black hover:bg-blue-100"
+          className={`ml-2 px-1 py-2 rounded flex items-center gap-1 ${
+            selectedFilter === filter
+              ? "bg-[#64ffda] text-black"
+              : "bg-gray-800 text-white hover:bg-gray-700"
           }`}
         >
           {icons[filter]} {filter}

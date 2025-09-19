@@ -5,10 +5,10 @@
 
 /* GeoInsight AI Theme Variables */
 :root {
-  --geo-bg-dark: #0a192f; /* Dark navy */
-  --geo-bg-light: #112240; /* Slightly lighter navy */
+  --geo-bg-dark: #000000; /* Dark navy */
+  --geo-bg-light: #181818ee; /* Slightly lighter navy */
   --geo-accent: #64ffda; /* Neon green/teal accent */
-  --geo-text-light: #414040; /* Light gray text */
+  --geo-text-light: #000000cc; /* Light gray text */
   --geo-text-dark: #bebdbd; /* Muted text */
 }
 
