@@ -1,7 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Dict
+# --- MODIFICATION START ---
+# Import 'Field' from Pydantic
+from pydantic import BaseModel, Field
+# --- MODIFICATION END ---
+from typing import Dict, List, Any
 from client import run_agent
 import asyncio
 import logging
@@ -18,9 +22,18 @@ app.add_middleware(
 )
 
 
+# class ChatRequest(BaseModel):
+#     message: str
+#     mcp_url: str = "http://localhost:8000/mcp"
+
+# --- MODIFICATION START ---
+# Update the request model to accept chat history and a chat ID
 class ChatRequest(BaseModel):
     message: str
+    chat_history: List[Dict[str, Any]] = Field(default_factory=list)
+    chat_id: str | None = None
     mcp_url: str = "http://localhost:8000/mcp"
+# --- MODIFICATION END ---
 
 @app.get("/")
 def read_root():
@@ -38,7 +51,16 @@ def health() -> Dict[str, str]:
 async def chat_query(body: ChatRequest):
     try:
         # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        result = await run_agent(body.message, body.mcp_url)
+        # result = await run_agent(body.message, body.mcp_url)
+        # --- MODIFICATION START ---
+        # Pass the history and chat_id to the agent runner
+        result = await run_agent(
+            message=body.message, 
+            chat_history=body.chat_history,
+            chat_id=body.chat_id,
+            mcp_url=body.mcp_url
+        )
+        # --- MODIFICATION END ---
         # Normalize response to a simple string for JSON serialization
         final_text = None
         try:
