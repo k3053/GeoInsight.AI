@@ -1,12 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 from typing import Dict
 from client import run_agent
 import asyncio
 import logging
+import os
 
 app = FastAPI(title="Location Intelligence", version="0.1")
+
+DIST_DIR = os.path.join("..", "frontend", "dist")
+ASSETS_DIR = os.path.join(DIST_DIR, "assets")
+
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
@@ -16,7 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 class ChatRequest(BaseModel):
     message: str
