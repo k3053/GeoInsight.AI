@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
-  Circle,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Search } from "lucide-react";
@@ -13,8 +13,9 @@ import { FaEllipsisH } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import Header from "./Header";
 import Filters from "./Filters";
-import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
-import { useMapEvents } from "react-leaflet";
+import PopulationOverlay from "./map-overlays/PopulationOverlay";
+import AQIOverlay from "./map-overlays/AQIOverlay";
+import BuildingOverlay from "./map-overlays/BuildingOverlay";
 
 /**
  * ChangeMapView: re-centers the map when center changes
@@ -22,9 +23,7 @@ import { useMapEvents } from "react-leaflet";
 function ChangeMapView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.setView(center, zoom);
-    }
+    if (center) map.setView(center, zoom);
   }, [center, zoom, map]);
   return null;
 }
@@ -35,51 +34,10 @@ function MapClickHandler({ setSelectedPos, setSearchQuery }) {
     click(e) {
       const { lat, lng } = e.latlng;
       setSelectedPos([lat, lng]);
-      setSearchQuery(""); // clear search text when clicking manually
+      setSearchQuery("");
     },
   });
   return null;
-}
-
-/** Helper color functions for AQI and Population buckets */
-function getPopulationColor(population) {
-  if (population <= 1000) return "#00E676"; // green
-  else if (population > 1000 && population <= 10000) return "#FFEB3B"; // yellow
-  else if (population > 10000 && population <= 15000) return "#FF9800"; // orange
-  else return "#E53935"; // red
-}
-
-function getAQIColor(aqi) {
-  if (aqi <= 50) return "#00E676"; // Good green
-  if (aqi <= 100) return "#FFEB3B"; // Moderate yellow
-  if (aqi <= 150) return "#FF9800"; // Unhealthy for sensitive groups
-  if (aqi <= 200) return "#F4511E"; // Unhealthy
-  if (aqi <= 300) return "#E53935"; // Very unhealthy
-  return "#6A1B9A"; // Hazardous
-}
-
-/**
- * Generate weighted points inside a circle (for heatmap)
- * returns array of [lat, lng, intensity]
- */
-function generateHeatPoints(center, baseWeight, n = 120, radiusMeters = 5000) {
-  const points = [];
-  const [latC, lngC] = center;
-  for (let i = 0; i < n; i++) {
-    // random polar coordinates
-    const r = Math.sqrt(Math.random()) * (radiusMeters / 1000); // in km (approx)
-    const theta = Math.random() * 2 * Math.PI;
-    // convert km offset to degrees (approx)
-    const dx = r * Math.cos(theta);
-    const dy = r * Math.sin(theta);
-    const lat = latC + (dy / 111); // ~111 km per degree latitude
-    const lng = lngC + (dx / (111 * Math.cos((latC * Math.PI) / 180)));
-    // weight decays with distance so center is stronger
-    const distFactor = 1 - Math.min(1, Math.sqrt(dx * dx + dy * dy) / (radiusMeters / 1000));
-    const intensity = Math.max(0.01, baseWeight * distFactor * (0.6 + Math.random() * 0.8));
-    points.push([lat, lng, intensity]);
-  }
-  return points;
 }
 
 export default function MapSection() {
@@ -89,39 +47,52 @@ export default function MapSection() {
   const [filterData, setFilterData] = useState(null);
   const [heatPoints, setHeatPoints] = useState([]);
   const selectedFilter = useSelector((state) => state.dashboard.selectedFilter);
+  const cacheRef = useRef({}); // cache for search queries
+  const debounceRef = useRef(null);
 
-  // env keys (read from Vite env - see instructions below)
+  // env keys 
   const API_NINJAS_KEY = import.meta.env.VITE_API_NINJAS_KEY; // used for population
   const AQICN_TOKEN = import.meta.env.VITE_AQICN_TOKEN; // used for AQI
 
-  // nominatim suggestions
+  // nominatim suggestions with debounce + cache
   const fetchSuggestions = async (q) => {
     if (q.length < 3) {
       setSuggestions([]);
       return;
     }
+
+    // return from cache if available
+    if (cacheRef.current[q]) {
+      setSuggestions(cacheRef.current[q]);
+      return;
+    }
+
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`
       );
       const data = await res.json();
+      cacheRef.current[q] = data; // cache it
       setSuggestions(data);
     } catch (err) {
       console.error("Error fetching suggestions:", err);
     }
   };
 
-  const handleSearch = () => {
-    console.log("Searching for:", searchQuery);
-  };
+  // debounce search input
+  useEffect(() => {
+    if (!searchQuery) {
+      setSuggestions([]);
+      return;
+    }
 
-  const handleSuggestionClick = (suggestion) => {
-    setSearchQuery(suggestion.display_name);
-    const lat = parseFloat(suggestion.lat);
-    const lon = parseFloat(suggestion.lon);
-    setSelectedPos([lat, lon]);
-    setSuggestions([]);
-  };
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(searchQuery);
+    }, 500); // adjust debounce delay here
+
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
 
   // Utility: reverse-geocode to get nearest city name (used for API Ninjas)
   const reverseGeocodeCity = async (lat, lon) => {
@@ -301,11 +272,12 @@ export default function MapSection() {
 
   return (
     <div className="relative h-full">
-      {/* Navbar Container */}
+      {/* Header + Filters */}
       <div className="absolute top-0 left-0 w-full z-20">
         <Header />
         <div className="bg-[#111]/95 backdrop-blur-md shadow-md flex flex-col px-4 py-2 gap-2">
           <div className="flex items-center justify-between gap-4">
+            {/* Search input */}
             <div className="relative flex items-center ml-[45px] max-w-md flex-1">
               <input
                 type="text"
@@ -313,23 +285,26 @@ export default function MapSection() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  fetchSuggestions(e.target.value);
+                  // fetchSuggestions(e.target.value);
                 }}
                 className="flex-1 text-[14px] bg-transparent border border-gray-600 text-white rounded-l px-3 py-2 focus:outline-none"
               />
               <button
-                onClick={handleSearch}
+                onClick={() => console.log("Searching for:", searchQuery)}
                 className="bg-[var(--geo-accent)] text-black px-2 py-2 rounded-r flex items-center gap-1 font-medium"
               >
                 <Search size={22} />
               </button>
-
               {suggestions.length > 0 && (
                 <ul className="absolute top-full left-0 w-full bg-white text-black rounded-b shadow-md max-h-40 overflow-y-auto z-30">
                   {suggestions.map((item, idx) => (
                     <li
                       key={idx}
-                      onClick={() => handleSuggestionClick(item)}
+                      onClick={() => {
+                        setSearchQuery(item.display_name);
+                        setSelectedPos([+item.lat, +item.lon]);
+                        setSuggestions([]);
+                      }}
                       className="px-3 py-2 hover:bg-gray-200 cursor-pointer text-[13px]"
                     >
                       {item.display_name}
@@ -338,6 +313,8 @@ export default function MapSection() {
                 </ul>
               )}
             </div>
+
+            {/* Filters */}
             <div className="flex items-center gap-2">
               <Filters locationSelected={true} />
               <button className="px-3 py-2 rounded flex items-center gap-1 bg-gray-800 text-white hover:bg-gray-700">
@@ -356,92 +333,20 @@ export default function MapSection() {
       >
         <ChangeMapView center={selectedPos} zoom={13} />
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-         {/* Enable map clicks */}
         <MapClickHandler setSelectedPos={setSelectedPos} setSearchQuery={setSearchQuery} />
         <Marker position={selectedPos}>
           <Popup>{searchQuery || "Selected Location"}</Popup>
         </Marker>
 
-        {/* Overlays by filter */}
-        {/* Population = heatmap with glassy look */}
-        {selectedFilter === "Population Density" && heatPoints.length > 0 && (
-          <>
-            {/* HeatmapLayer expects an array of [lat, lng, intensity] */}
-            <HeatmapLayer
-              fitBoundsOnLoad
-              fitBoundsOnUpdate
-              points={heatPoints}
-              longitudeExtractor={(m) => m[1]}
-              latitudeExtractor={(m) => m[0]}
-              intensityExtractor={(m) => m[2]}
-              maxZoom={18}
-              // radius & blur create a glass/soft look (tweak values to taste)
-              radius={25}
-              blur={40}
-              // You can emulate "glassy" by layering a semi-transparent circle as well
-            />
-            {/* a subtle outer ring for the 5km area */}
-            <Circle
-              center={selectedPos}
-              radius={5000}
-              pathOptions={{
-                color: "#ffffff20",
-                weight: 1,
-                dashArray: "6",
-                fillOpacity: 0,
-              }}
-            />
-          </>
+        {/* Modular overlays */}
+        {selectedFilter === "Population Density" && (
+          <PopulationOverlay selectedPos={selectedPos} heatPoints={heatPoints} />
         )}
-
-        {/* AQI = colored circle radius 5km */}
-        {selectedFilter === "Air Quality Index" && filterData && filterData.aqi !== undefined && (
-          <>
-            <Circle
-              center={selectedPos}
-              radius={5000}
-              pathOptions={{
-                color: getAQIColor(filterData.aqi),
-                fillColor: getAQIColor(filterData.aqi),
-                fillOpacity: 0.18,
-                weight: 2,
-              }}
-            />
-            <Marker position={selectedPos}>
-              <Popup>
-                <div>
-                  <b>AQI:</b> {filterData.aqi} <br />
-                  <small>Source: AQICN</small>
-                </div>
-              </Popup>
-            </Marker>
-          </>
+        {selectedFilter === "Air Quality Index" && (
+          <AQIOverlay selectedPos={selectedPos} filterData={filterData} />
         )}
-
-        {/* Number of Buildings = markers */}
-        {selectedFilter === "Number of Buildings" && filterData && filterData.points && (
-          <>
-            {filterData.points.map((p, idx) => (
-              <Marker key={idx} position={[p.lat, p.lon]}>
-                <Popup>
-                  <div>
-                    <b>Building</b>
-                    <div>{p.tags && p.tags.name ? p.tags.name : "OSM building"}</div>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-            <Circle
-              center={selectedPos}
-              radius={5000}
-              pathOptions={{
-                color: "#ffffff20",
-                dashArray: "6",
-                weight: 1,
-                fillOpacity: 0,
-              }}
-            />
-          </>
+        {selectedFilter === "Number of Buildings" && (
+          <BuildingOverlay selectedPos={selectedPos} filterData={filterData} />
         )}
       </MapContainer>
     </div>
