@@ -20,7 +20,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
-    mcp_url: str | None = None
+    mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
 def read_root():
