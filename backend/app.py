@@ -7,6 +7,7 @@ from client import run_agent
 import asyncio
 import logging
 import os
+from chat_history import create_chat_history
 
 app = FastAPI(title="Location Intelligence", version="0.1")
 
@@ -27,6 +28,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str = "test-session"
     # mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
@@ -62,6 +64,14 @@ async def chat_query(body: ChatRequest):
                         # Take text parts if present
                         text_parts = [p.get("text") for p in content if isinstance(p, dict) and p.get("type") == "text"]
                         final_text = "\n".join([t for t in text_parts if t]) or None
+            # Handle direct AIMessage/BaseMessage return shape
+            if not final_text and hasattr(result, "content"):
+                content = getattr(result, "content", None)
+                if isinstance(content, str):
+                    final_text = content
+                elif isinstance(content, list) and content:
+                    text_parts = [p.get("text") for p in content if isinstance(p, dict) and p.get("type") == "text"]
+                    final_text = "\n".join([t for t in text_parts if t]) or None
         except Exception:
             pass
 
@@ -75,5 +85,3 @@ async def chat_query(body: ChatRequest):
     except Exception as e:
         logging.exception("/chat/query failed")
         raise HTTPException(status_code=500, detail=str(e))
-
-

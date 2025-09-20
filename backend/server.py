@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import requests
 import googlemaps
+from chat_history import create_chat_history
 
 load_dotenv()
 
@@ -47,7 +48,6 @@ def get_air_quality(latitude, longitude):
             "longitude": longitude
         }
     }
-    
     
 
     try:
@@ -197,7 +197,6 @@ def search_nearby_places(latitude, longitude, radius=1000, place_type="restauran
         return None
 
 
-
 @mcp.tool()
 def compute_area_insights(
     insights,
@@ -251,6 +250,7 @@ def compute_area_insights(
     except Exception as e:
         print(f"Error: {e}")
         return None
+
 
 
 # NOTE: Dont remove this
