@@ -14,10 +14,12 @@ from dotenv import load_dotenv
 from prompt_library import REACT_AGENT_PROMPT
 from chat_history import create_chat_history
 import json
+from langgraph.checkpoint.memory import InMemorySaver
 
 load_dotenv()
 
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+checkpointer = InMemorySaver()
 
 async def run_agent(message: str, session_id: str = "test-session"):
     
@@ -37,11 +39,17 @@ async def run_agent(message: str, session_id: str = "test-session"):
             
             await session.initialize()
             tools = await load_mcp_tools(session)
-            agent = create_react_agent(model, tools, prompt=REACT_AGENT_PROMPT)
+            agent = create_react_agent(
+                model, 
+                tools, 
+                prompt=REACT_AGENT_PROMPT,
+                checkpointer=checkpointer
+            )
             
             async def _invoke():
+                config = {"configurable": {"thread_id": "1"}}
                 # Pass only the current user message to the agent
-                return await agent.ainvoke({"messages": message})
+                return await agent.ainvoke({"messages": message}, config=config)
             
             agent_response = await asyncio.wait_for(_invoke(), timeout=30)
 

@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import os
 import requests
 import googlemaps
-from chat_history import create_chat_history
 
 load_dotenv()
 
@@ -120,8 +119,33 @@ def get_geolocation(mac_address: str, signal_strength: int = None):
 @mcp.tool()
 def get_weather(latitude: float, longitude: float):
     """
-    Get current weather conditions for given coordinates (latitude, longitude).
-    Uses Google Weather API.
+    Get current weather conditions for a location via Google's Weather API
+    `currentConditions:lookup` endpoint.
+
+    Parameters:
+    - latitude (float): Latitude in decimal degrees.
+    - longitude (float): Longitude in decimal degrees.
+
+    Returns:
+    - dict | None: Raw JSON on success (None on error). The response can include:
+      - currentTime, timeZone, isDaytime
+      - weatherCondition (iconBaseUri, description.text, type)
+      - temperature, feelsLikeTemperature, dewPoint, heatIndex, windChill
+      - relativeHumidity, uvIndex
+      - precipitation (probability.percent/type, qpf.quantity/unit)
+      - thunderstormProbability
+      - airPressure.meanSeaLevelMillibars
+      - wind (direction.degrees/cardinal, speed.value/unit, gust.value/unit)
+      - visibility.distance/unit, cloudCover
+      - currentConditionsHistory (temperatureChange, maxTemperature, minTemperature, qpf)
+
+    Notes:
+    - Units default to metric. The API also supports imperial units via the
+      `unitsSystem=IMPERIAL` query parameter. If needed, extend this tool to
+      accept a `units_system` argument and pass it through.
+
+    Example:
+    - get_weather(37.4220, -122.0841)
     """
     url = (
         f"https://weather.googleapis.com/v1/currentConditions:lookup"
@@ -136,6 +160,79 @@ def get_weather(latitude: float, longitude: float):
         print(f"Error: {e}")
         return None
 
+@mcp.tool()
+def get_daily_forecast(
+    latitude: float,
+    longitude: float,
+    days: int = None,
+    page_size: int = None,
+    page_token: str = None,
+):
+    """
+    Get daily forecast (up to 10 days) for a location using Google Weather API.
+    Optional parameters:
+    - days: number of days to return (1-10)
+    - page_size: number of days per page
+    - page_token: token from previous response to fetch next page
+    """
+    url = "https://weather.googleapis.com/v1/forecast/days:lookup"
+
+    params = {
+        "key": GOOGLEMAPS_API_KEY,
+        "location.latitude": latitude,
+        "location.longitude": longitude,
+    }
+    if days is not None:
+        params["days"] = days
+    if page_size is not None:
+        params["pageSize"] = page_size
+    if page_token:
+        params["pageToken"] = page_token
+
+    try:
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+@mcp.tool()
+def get_hourly_forecast(
+    latitude: float,
+    longitude: float,
+    hours: int = None,
+    page_size: int = None,
+    page_token: str = None,
+):
+    """
+    Get hourly forecast (up to 240 hours) for a location using Google Weather API.
+    Optional parameters:
+    - hours: number of hours to return (1-240)
+    - page_size: number of hours per page
+    - page_token: token from previous response to fetch next page
+    """
+    url = "https://weather.googleapis.com/v1/forecast/hours:lookup"
+
+    params = {
+        "key": GOOGLEMAPS_API_KEY,
+        "location.latitude": latitude,
+        "location.longitude": longitude,
+    }
+    if hours is not None:
+        params["hours"] = hours
+    if page_size is not None:
+        params["pageSize"] = page_size
+    if page_token:
+        params["pageToken"] = page_token
+
+    try:
+        resp = requests.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
 
 @mcp.tool()
 def search_places(query: str):
@@ -162,6 +259,9 @@ def search_places(query: str):
     except Exception as e:
         print(f"Error: {e}")
         return None
+
+
+
 
 @mcp.tool()
 def search_nearby_places(latitude, longitude, radius=1000, place_type="restaurant", max_results=10):
@@ -281,10 +381,14 @@ def compute_area_insights(
 #         return None
 
 
+
+
+
+
 if __name__ == "__main__":
     import sys
     # Choose transport by CLI arg: `python server.py stdio` or `python server.py http`
-    # Default to HTTP when run directly.
-    arg = sys.argv[1].lower() if len(sys.argv) > 1 else "http"
+    # Default to stdio when run directly to match client expectations.
+    arg = sys.argv[1].lower() if len(sys.argv) > 1 else "stdio"
     transport = "stdio" if arg == "stdio" else "streamable-http"
     mcp.run(transport=transport)

@@ -7,7 +7,6 @@ from client import run_agent
 import asyncio
 import logging
 import os
-from chat_history import create_chat_history
 
 app = FastAPI(title="Location Intelligence", version="0.1")
 
