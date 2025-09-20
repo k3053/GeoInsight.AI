@@ -27,7 +27,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     message: str
-    mcp_url: str = "http://localhost:8000/mcp"
+    # mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
 def read_root():
@@ -45,7 +45,7 @@ def health() -> Dict[str, str]:
 async def chat_query(body: ChatRequest):
     try:
         # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        result = await run_agent(body.message, body.mcp_url)
+        result = await run_agent(body.message)
         # Normalize response to a simple string for JSON serialization
         final_text = None
         try:

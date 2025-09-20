@@ -45,29 +45,29 @@ model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 
 # NOTE: using streamable-http
 
-async def run_agent(message: str, mcp_url: str = "http://localhost:8000/mcp"):
-    if mcp_url:
-        try:
-            async def _run_over_http():
-                async with streamablehttp_client(mcp_url) as (
-                    read_stream,
-                    write_stream,
-                    _
-                ):
-                    async with ClientSession(read_stream, write_stream) as session:
-                        await session.initialize()
-                    tools = await load_mcp_tools(session)
-                    agent = create_react_agent(model, tools)
-                    # Bound overall agent run to avoid hanging forever
-                    async def _invoke():
-                        return await agent.ainvoke({"messages": message})
-                    return await asyncio.wait_for(_invoke(), timeout=30)
+async def run_agent(message: str):
+    # if mcp_url:
+    #     try:
+    #         async def _run_over_http():
+    #             async with streamablehttp_client(mcp_url) as (
+    #                 read_stream,
+    #                 write_stream,
+    #                 _
+    #             ):
+    #                 async with ClientSession(read_stream, write_stream) as session:
+    #                     await session.initialize()
+    #                 tools = await load_mcp_tools(session)
+    #                 agent = create_react_agent(model, tools)
+    #                 # Bound overall agent run to avoid hanging forever
+    #                 async def _invoke():
+    #                     return await agent.ainvoke({"messages": message})
+    #                 return await asyncio.wait_for(_invoke(), timeout=30)
 
-            # Bound the HTTP connection/setup time to avoid hanging on wrong URLs
-            return await asyncio.wait_for(_run_over_http(), timeout=8)
-        except Exception:
-            # Fallback to stdio if HTTP MCP is unreachable
-            pass
+    #         # Bound the HTTP connection/setup time to avoid hanging on wrong URLs
+    #         return await asyncio.wait_for(_run_over_http(), timeout=8)
+    #     except Exception:
+    #         # Fallback to stdio if HTTP MCP is unreachable
+    #         pass
 
     # Spawn server.py using stdio transport with absolute paths and current Python
     python_exe = sys.executable or "python"
@@ -89,22 +89,23 @@ async def run_agent(message: str, mcp_url: str = "http://localhost:8000/mcp"):
 
 # Run the async function
 if __name__ == "__main__":
+    pass
     # Example CLI usage
-    import os
-    test_message = os.environ.get("TEST_MESSAGE", "Hello")
-    test_mcp_url = os.environ.get("MCP_URL", "http://localhost:8000/mcp")
-    result = asyncio.run(run_agent(test_message, test_mcp_url))
+    # import os
+    # test_message = os.environ.get("TEST_MESSAGE", "Hello")
+    # test_mcp_url = os.environ.get("MCP_URL", "http://localhost:8000/mcp")
+    # result = asyncio.run(run_agent(test_message, test_mcp_url))
     
-    # Extract the final answer from the last message
-    messages = result['messages']
-    if messages and len(messages) > 0:
-        last_message = messages[-1]
-        if hasattr(last_message, 'content') and last_message.content:
-            print(f"\nAnswer: {last_message.content}")
-        else:
-            print("\nNo final answer found.")
-    else:
-        print("\nNo messages received.")
+    # # Extract the final answer from the last message
+    # messages = result['messages']
+    # if messages and len(messages) > 0:
+    #     last_message = messages[-1]
+    #     if hasattr(last_message, 'content') and last_message.content:
+    #         print(f"\nAnswer: {last_message.content}")
+    #     else:
+    #         print("\nNo final answer found.")
+    # else:
+    #     print("\nNo messages received.")
 
 
 
