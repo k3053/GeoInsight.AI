@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+# --- MODIFICATION START ---
+# Import 'Field' from Pydantic
+from pydantic import BaseModel, Field
+# --- MODIFICATION END ---
+from typing import Dict, List, Any
 from fastapi.staticfiles import StaticFiles
 from typing import Dict
 from client import run_agent
@@ -28,6 +32,9 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     # mcp_url: str = "http://localhost:8000/mcp"
+    chat_history: List[Dict[str, Any]] = Field(default_factory=list)
+    chat_id: str | None = None
+    mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
 def read_root():
@@ -45,7 +52,13 @@ def health() -> Dict[str, str]:
 async def chat_query(body: ChatRequest):
     try:
         # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        result = await run_agent(body.message)
+        # result = await run_agent(body.message)
+        result = await run_agent(
+            message=body.message, 
+            chat_history=body.chat_history,
+            chat_id=body.chat_id,
+            mcp_url=body.mcp_url
+        )
         # Normalize response to a simple string for JSON serialization
         final_text = None
         try:
