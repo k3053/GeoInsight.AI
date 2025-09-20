@@ -1,10 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# --- MODIFICATION START ---
-# Import 'Field' from Pydantic
-from pydantic import BaseModel, Field
-# --- MODIFICATION END ---
-from typing import Dict, List, Any
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from typing import Dict
 from client import run_agent
@@ -17,8 +13,8 @@ app = FastAPI(title="Location Intelligence", version="0.1")
 DIST_DIR = os.path.join("..", "frontend", "dist")
 ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
@@ -32,9 +28,6 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     # mcp_url: str = "http://localhost:8000/mcp"
-    chat_history: List[Dict[str, Any]] = Field(default_factory=list)
-    chat_id: str | None = None
-    mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
 def read_root():
@@ -52,13 +45,7 @@ def health() -> Dict[str, str]:
 async def chat_query(body: ChatRequest):
     try:
         # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        # result = await run_agent(body.message)
-        result = await run_agent(
-            message=body.message, 
-            chat_history=body.chat_history,
-            chat_id=body.chat_id,
-            mcp_url=body.mcp_url
-        )
+        result = await run_agent(body.message)
         # Normalize response to a simple string for JSON serialization
         final_text = None
         try:
