@@ -10,3 +10,5 @@ requests
 python-dotenv
 mcp
 fastapi[standard]
+astrapy
+langchain_astradb
