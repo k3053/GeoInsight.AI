@@ -5,10 +5,10 @@
 
 /* GeoInsight AI Theme Variables */
 :root {
-  --theme-bg: #0a101f; /* Deep, dark blue */
+  --theme-bg: #111727; /* Deep, dark blue */
   --theme-surface: #101a30; /* Slightly lighter surface color */
-  --theme-border: #2c5282; /* Muted blue for borders */
-  --theme-primary: #64ffda; /* Neon green/teal accent */
+  --theme-border: #22b4d4; /* Muted blue for borders */
+  --theme-primary: #4ad5b4; /* Neon green/teal accent */
   --theme-text-primary: #e2e8f0; /* Light gray/white text */
   --theme-text-secondary: #a0aec0; /* Muted gray text */
 }
@@ -32,7 +32,7 @@ body {
 
 .card-floating:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 25px rgba(100, 255, 218, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 25px rgba(6, 209, 220, 0.736);
 }
 
 /* Button Styles */

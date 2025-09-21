@@ -16,17 +16,21 @@ const HomePage = ({ handleLogout }) => {
   };
   
   return (
-    <div className="flex flex-col h-screen overflow-hidden p-2 lg:p-4 bg-[var(--theme-bg)]">
+    // Main container with padding
+    <div className="flex flex-col h-screen overflow-hidden p-4 bg-[var(--theme-bg)] gap-4">
+      {/* Header now sits outside the main grid */}
       <Header 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearch={handleSearch}
         locationSelected={locationSelected}
-        handleLogout={handleLogout}
+        handleLogout={handleLogout} 
       />
       
-      <main className="flex-grow flex flex-col lg:grid lg:grid-cols-2 lg:grid-rows-2 gap-4 p-2 lg:p-4 h-full overflow-y-auto lg:overflow-hidden">
+      {/* Main content grid takes the remaining space */}
+      <main className="flex-grow grid grid-cols-1 pt-4 lg:grid-cols-2 lg:grid-rows-2 gap-4 h-full overflow-y-auto lg:overflow-hidden">
         
+        {/* Box 1: Map (Top-Left on Desktop) */}
         <div className="h-[50vh] lg:h-auto lg:col-start-1 lg:row-start-1 card-floating">
           <MapSection 
             searchQuery={searchQuery}
@@ -35,11 +39,12 @@ const HomePage = ({ handleLogout }) => {
           />
         </div>
 
+        {/* Box 3: Chat (Bottom-Left on Desktop) */}
         <div className="h-[60vh] lg:h-auto lg:col-start-1 lg:row-start-2 card-floating overflow-hidden">
-          <ChatSection />
+           <ChatSection />
         </div>
 
-        {/* Pass the locationSelected state as a prop here */}
+        {/* Box 2 & 4: Dashboard (Entire Right Column on Desktop) */}
         <div className="h-[70vh] lg:h-auto lg:col-start-2 lg:row-start-1 lg:row-span-2 card-floating overflow-hidden">
           <DashboardCharts locationSelected={locationSelected} />
         </div>
