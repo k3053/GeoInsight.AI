@@ -28,10 +28,9 @@ const HomePage = ({ handleLogout }) => {
       />
       
       {/* Main content grid takes the remaining space */}
-      <main className="flex-grow grid grid-cols-1 pt-4 lg:grid-cols-2 lg:grid-rows-2 gap-4 h-full overflow-y-auto lg:overflow-hidden">
-        
+      <main className="flex-grow grid grid-cols-1 pt-4 gap-4 h-full overflow-y-auto lg:overflow-hidden lg:grid-cols-[60%_40%] lg:grid-rows-2">
         {/* Box 1: Map (Top-Left on Desktop) */}
-        <div className="h-[50vh] lg:h-auto lg:col-start-1 lg:row-start-1 card-floating">
+        <div className="h-[60%] lg:h-auto lg:col-start-1 lg:row-start-1 card-floating">
           <MapSection 
             searchQuery={searchQuery}
             searchTrigger={searchTrigger}
@@ -40,7 +39,7 @@ const HomePage = ({ handleLogout }) => {
         </div>
 
         {/* Box 3: Chat (Bottom-Left on Desktop) */}
-        <div className="h-[60vh] lg:h-auto lg:col-start-1 lg:row-start-2 card-floating overflow-hidden">
+        <div className="h-[40%] lg:h-auto lg:col-start-1 lg:row-start-2 card-floating overflow-hidden">
            <ChatSection />
         </div>
 
@@ -48,7 +47,6 @@ const HomePage = ({ handleLogout }) => {
         <div className="h-[70vh] lg:h-auto lg:col-start-2 lg:row-start-1 lg:row-span-2 card-floating overflow-hidden">
           <DashboardCharts locationSelected={locationSelected} />
         </div>
-
       </main>
     </div>
   );

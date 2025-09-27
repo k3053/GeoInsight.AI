@@ -87,58 +87,65 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
     const fetchData = async () => {
       setIsLoading(true);
       let data = null;
-      
       try {
         switch (selectedFilter) {
-          case "Population Density":
+          case "Population Density": {
             const lat = selectedPos[0];
             const lng = selectedPos[1];
             const radius = 2000; // 5km radius
-            const populationResponse = await fetch(`https://api.api-ninjas.com/v1/city?name=__&lat=${lat}&lon=${lng}&radius=${radius}`, {
+            const populationResponse = await fetch(`https://api.api-ninjas.com/v1/city?lat=${lat}&lon=${lng}&radius=${radius}`, {
               headers: { 'X-Api-Key': VITE_API_NINJAS_KEY }
             });
             const populationData = await populationResponse.json();
-            
-            // Assuming the API returns an array of cities in the radius
-            const totalPopulation = populationData.reduce((acc, city) => acc + city.population, 0);
+            const validPoints = Array.isArray(populationData)
+              ? populationData
+                  .filter(city =>
+                    city.latitude !== undefined &&
+                    city.longitude !== undefined &&
+                    city.population !== undefined &&
+                    !isNaN(Number(city.latitude)) &&
+                    !isNaN(Number(city.longitude)) &&
+                    !isNaN(Number(city.population))
+                  )
+                  .map(city => [
+                    Number(city.latitude),
+                    Number(city.longitude),
+                    Math.max(1, Number(city.population) / 1000)
+                  ])
+              : [];
+            const totalPopulation = validPoints.reduce((acc, pt) => acc + pt[2] * 1000, 0);
             data = { population: totalPopulation };
-            
-            // Create heatmap points
-            const points = populationData.map(city => [city.latitude, city.longitude, city.population / 1000]); // Intensity scaled
-            setHeatPoints(points);
+            setHeatPoints(validPoints);
             break;
-
-          case "Air Quality Index":
+          }
+          case "Air Quality Index": {
             const aqiResponse = await fetch(`https://api.waqi.info/feed/geo:${selectedPos[0]};${selectedPos[1]}/?token=${VITE_AQICN_TOKEN}`);
             const aqiData = await aqiResponse.json();
             if (aqiData.status === "ok") {
               data = { aqi: aqiData.data.aqi };
             }
             break;
-
-          case "Number of Buildings":
+          }
+          case "Number of Buildings": {
             const bounds = `${selectedPos[0] - 0.05},${selectedPos[1] - 0.05},${selectedPos[0] + 0.05},${selectedPos[1] + 0.05}`;
             const overpassQuery = `[out:json];(way["building"](${bounds}););out body;>;out skel qt;`;
             const overpassResponse = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`);
             const buildingsData = await overpassResponse.json();
             data = { totalBuildings: buildingsData.elements.length, points: buildingsData.elements };
             break;
-
+          }
           default:
             break;
         }
-
       } catch (error) {
         console.error("Failed to fetch filter data:", error);
         alert(`Failed to fetch data for ${selectedFilter}.`);
       } finally {
-        setFilterData(data);
-        // Dispatch event with the new stats
-        window.dispatchEvent(new CustomEvent("mapStatsUpdated", { detail: { totals: data } }));
+        setFilterData(data || {}); // Always set, even if null
+        window.dispatchEvent(new CustomEvent("mapStatsUpdated", { detail: { totals: data || {} } }));
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, [selectedFilter, selectedPos]);
 
