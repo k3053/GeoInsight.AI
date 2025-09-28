@@ -13,8 +13,8 @@ app = FastAPI(title="Location Intelligence", version="0.1")
 DIST_DIR = os.path.join("..", "frontend", "dist")
 ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
-# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
