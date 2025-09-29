@@ -53,6 +53,15 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
   }, [searchQuery]);
 
   const handleKeyDown = (e) => {
+    // If there are suggestions and none is selected, do not trigger search on Enter.
+    if (e.key === 'Enter') {
+      if (suggestions.length > 0 && activeSuggestion === -1) {
+        // Prevent search so user can select from the suggestion list.
+        e.preventDefault();
+        return;
+      }
+    }
+
     if (suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         setActiveSuggestion((prev) => Math.min(prev + 1, suggestions.length - 1));
@@ -68,9 +77,7 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
           setActiveSuggestion(-1);
           // Pinpoint on map by triggering search
           onSearch();
-        } else {
-          onSearch();
-        }
+        } 
       }
     } else if (e.key === 'Enter') {
       onSearch();
@@ -147,4 +154,3 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
 };
 
 export default Header;
-

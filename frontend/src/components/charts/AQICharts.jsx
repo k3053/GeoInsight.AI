@@ -1,54 +1,83 @@
-//Source of AQI data: https://www.airnow.gov/aqi/aqi-basics/
 import React from "react";
 import {
   PieChart, Pie, Cell, Tooltip, Legend,
-  BarChart, Bar, XAxis, YAxis,
-  LineChart, Line, CartesianGrid, LabelList
+  BarChart, Bar, XAxis, YAxis, LabelList,
+  LineChart, Line, CartesianGrid
 } from "recharts";
 
-// EPA AQI Categories
-const AQI_CATEGORIES = [
-  { label: "Good", range: [0, 50], color: "#00E676", description: "Air quality is satisfactory, and air pollution poses little or no risk." },
-  { label: "Moderate", range: [51, 100], color: "#FFEB3B", description: "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution." },
-  { label: "Unhealthy for Sensitive Groups", range: [101, 150], color: "#F4511E", description: "Members of sensitive groups may experience health effects. The general public is less likely to be affected." },
-  { label: "Unhealthy", range: [151, 200], color: "#F4511E", description: "Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects." },
-  { label: "Very Unhealthy", range: [201, 300], color: "#b1201eff", description: "Health alert: The risk of health effects is increased for everyone." },
-  { label: "Hazardous", range: [301, 500], color: "#6A1B9A", description: "Health warning of emergency conditions: everyone is more likely to be affected." },
-];
+// Use the same getAQIColor logic for 10 intervals.
+function getAQIColor(aqi) {
+  if (aqi <= 50) return "#00E676";
+  else if (aqi <= 100) return "#FFEB3B";
+  else if (aqi <= 150) return "#FFA726";
+  else if (aqi <= 200) return "#F4511E";
+  else if (aqi <= 250) return "#E53935";
+  else if (aqi <= 300) return "#8E24AA";
+  else if (aqi <= 350) return "#3949AB";
+  else if (aqi <= 400) return "#283593";
+  else if (aqi <= 450) return "#1E88E5";
+  else return "#039BE5";
+}
+
+// Generate dynamic categories in 50-unit intervals (0-50, 50-100, …, 450-500) 👉 exactly 10 intervals.
+const dynamicCategories = Array.from({ length: 10 }, (_, i) => {
+  const low = i * 50;
+  const high = (i + 1) * 50;
+  return {
+    label: `${low}-${high}`,
+    range: [low, high],
+    color: getAQIColor((low + high) / 2),
+    description: `AQI values from ${low} to ${high}`
+  };
+});
 
 export default function AQICharts({ stats }) {
-  const aqi = stats?.totals?.aqi || 0;
+  // Extract current AQI from the forecast object structure.
+  // Here we assume stats.totals.aqi.data.aqi holds the current AQI.
+  const aqi = stats?.totals?.aqi?.data?.aqi || 0;
+  // Calculate percentage relative to 500.
   const percent = ((aqi / 500) * 100).toFixed(1);
 
-  // Find current AQI category
-  const category = AQI_CATEGORIES.find(c => aqi >= c.range[0] && aqi <= c.range[1]) || AQI_CATEGORIES[AQI_CATEGORIES.length - 1];
+  // Determine the current interval category from our 10 dynamic categories.
+  const category = dynamicCategories.find(c => aqi >= c.range[0] && aqi < c.range[1]) ||
+                   dynamicCategories[dynamicCategories.length - 1];
 
-  // ----- PIE CHART -----
+  // Build PieChart data: current AQI and remainder to 500.
   const pieData = [
     { name: `${category.label} (${aqi})`, value: aqi, color: category.color },
     { name: "Remaining to 500", value: Math.max(0, 500 - aqi), color: "#eeeeee" },
   ];
 
-  // ----- BAR CHART DATA -----
-  const barData = AQI_CATEGORIES.map(c => {
-    const inRange = aqi >= c.range[0] && aqi <= c.range[1];
-    return {
-      category: c.label,
-      value: inRange ? percent : 0,  // only current one has % value
-      color: c.color,
-    };
-  });
-
-  // ----- LINE CHART (trend, simulated) -----
-  const lineData = [
-    { time: "2h ago", value: Math.max(0, aqi - 35) },
-    { time: "1h ago", value: Math.max(0, aqi - 20) },
-    { time: "Now", value: aqi },
-  ].map(d => ({
-    ...d,
-    percent: ((d.value / 500) * 100).toFixed(1),
-    color: AQI_CATEGORIES.find(c => d.value >= c.range[0] && d.value <= c.range[1])?.color || "#999"
+  // Build BarChart data: one bar per interval.
+  // Only fill the bar corresponding to the current AQI interval.
+  const barData = dynamicCategories.map(c => ({
+    category: c.label,
+    value: (aqi >= c.range[0] && aqi < c.range[1]) ? percent : 0,
+    color: c.color,
   }));
+
+  // For the LineChart, use real forecast data if available (using forecast.daily.pm25).
+  let lineData = [];
+  if (stats?.totals?.aqi?.data?.forecast?.daily?.pm25 && stats.totals.aqi.data.forecast.daily.pm25.length >= 3) {
+    // Using the first three forecast entries.
+    lineData = stats.totals.aqi.data.forecast.daily.pm25.slice(0, 3).map(item => ({
+      time: item.day,
+      value: item.avg,
+      percent: ((item.avg / 500) * 100).toFixed(1),
+      color: getAQIColor(item.avg)
+    }));
+  } else {
+    // Fallback simulated trend if forecast data is missing.
+    lineData = [
+      { time: "2h ago", value: Math.max(0, aqi - 30) },
+      { time: "1h ago", value: Math.max(0, aqi - 15) },
+      { time: "Now", value: aqi },
+    ].map(d => ({
+      ...d,
+      percent: ((d.value / 500) * 100).toFixed(1),
+      color: getAQIColor(d.value)
+    }));
+  }
 
   return (
     <div className="card-glass p-4">
@@ -57,10 +86,10 @@ export default function AQICharts({ stats }) {
       <div className="grid md:grid-rows-3 gap-3">
         {/* ----- Pie Chart ----- */}
         <div className="p-3 rounded-lg bg-black/30 outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-4">AQI Percentage of Max (500)</h3>
+          <h3 className="text-sm font-semibold mb-4">Current AQI Percentage (Max 500)</h3>
           <div className="flex flex-row items-center mt-7 gap-6 ml-8">
             <PieChart width={300} height={260} margin={{ top: 10, right: 20, bottom: 40, left: 20 }}>
-              <Legend verticalAlign="top" height={36} align="left" wrapperStyle={{ paddingBottom: 80 }}/>
+              <Legend verticalAlign="top" height={36} align="left" wrapperStyle={{ paddingBottom: 80 }} />
               <Pie
                 data={pieData}
                 dataKey="value"
@@ -76,51 +105,38 @@ export default function AQICharts({ stats }) {
             </PieChart>
           </div>
           <div className="mt-2 p-2 bg-gray-800 text-sm rounded">
-            Current AQI is <b>{aqi}</b> ({percent}% of hazardous level). <br />
-            <span style={{ color: category.color, fontWeight: "bold" }}>{category.label}</span>: {category.description}
+            Current AQI is <b>{aqi}</b> ({percent}% of 500). Interval{" "}
+            <b style={{ color: category.color }}>{category.label}</b>: {category.description}
           </div>
         </div>
 
         {/* ----- Bar Chart ----- */}
-        <div className="p-3 rounded-lg bg-black/30 mt-[0px] outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-2">AQI Category Classification</h3>
+        <div className="p-3 rounded-lg bg-black/30 outline-1 outline-white-700">
+          <h3 className="text-sm font-semibold mb-2">AQI Interval Distribution</h3>
           <BarChart
             width={350}
-            height={320} 
+            height={320}
             data={barData}
-            margin={{ top: 20, right: 20, bottom: 60, left: 20 }} // give space at bottom
+            margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
           >
-            <XAxis
-              dataKey="category"
-              angle={-25}
-              textAnchor="end"
-              interval={0}
-              tickFormatter={(val) =>
-                val === "Unhealthy for Sensitive Groups" ? "Unhealthy" : val
-              }
-            />
+            <XAxis dataKey="category" angle={-25} textAnchor="end" />
             <YAxis unit="%" />
             <Tooltip />
             <Bar dataKey="value">
               {barData.map((entry, index) => (
                 <Cell key={index} fill={entry.color} />
               ))}
-              <LabelList
-                dataKey="value"
-                position="top"
-                formatter={(val) => (val > 0 ? `${val}%` : "")}
-              />
+              <LabelList dataKey="value" position="top" formatter={(val) => (val > 0 ? `${val}%` : "")} />
             </Bar>
           </BarChart>
           <div className="mt-5 p-2 bg-gray-800 text-sm rounded">
-            All AQI categories are shown. The current category bar is filled with its
-            percentage of the maximum scale (500).
+            Each bar represents a 50-point AQI interval (from 0 to 500). Only the interval corresponding to the current AQI is filled with its percentage value.
           </div>
         </div>
 
         {/* ----- Line Chart ----- */}
         <div className="p-3 rounded-lg bg-black/30 outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-2">AQI Trend (Last 2 Hours)</h3>
+          <h3 className="text-sm font-semibold mb-2">AQI Trend (Forecast)</h3>
           <div className="flex flex-col items-left mt-7">
             <LineChart width={350} height={280} data={lineData}>
               <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
@@ -131,7 +147,8 @@ export default function AQICharts({ stats }) {
             </LineChart>
           </div>
           <div className="mt-8 p-2 bg-gray-800 text-sm rounded">
-            AQI values over the past 2 hours. Current AQI is in the <b style={{ color: category.color }}>{category.label}</b> range.
+            AQI trend forecast based on current predictions. The current AQI interval is{" "}
+            <b style={{ color: category.color }}>{category.label}</b>.
           </div>
         </div>
       </div>

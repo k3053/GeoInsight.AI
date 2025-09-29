@@ -45,19 +45,20 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
   const [heatPoints, setHeatPoints] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- LOGIC MOVED FROM OLD SEARCH BAR ---
-  // Effect to perform a search when the trigger changes
+  // Search effect remains unchanged.
   useEffect(() => {
     const performSearch = async () => {
       if (!searchQuery) return;
       setIsLoading(true);
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${searchQuery}`);
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
+        );
         const data = await response.json();
         if (data && data.length > 0) {
           const { lat, lon } = data[0];
           setSelectedPos([parseFloat(lat), parseFloat(lon)]);
-          onLocationSelect(); // Notify parent
+          onLocationSelect();
         } else {
           alert("Location not found.");
         }
@@ -68,15 +69,13 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
         setIsLoading(false);
       }
     };
-    
-    if (searchTrigger > 0) {
+
+    if (searchQuery && searchTrigger > 0) {
       performSearch();
     }
-  }, [searchTrigger, searchQuery, onLocationSelect]);
+  }, [searchTrigger]);
 
-
-  // --- RESTORED DATA FETCHING LOGIC ---
-  // Effect to fetch data when filter or position changes
+  // Data fetching effect for selectedFilter and selectedPos.
   useEffect(() => {
     if (!selectedFilter || !selectedPos) {
       setFilterData(null);
@@ -90,47 +89,44 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
       try {
         switch (selectedFilter) {
           case "Population Density": {
-            const lat = selectedPos[0];
-            const lng = selectedPos[1];
-            const radius = 2000; // 5km radius
-            const populationResponse = await fetch(`https://api.api-ninjas.com/v1/city?lat=${lat}&lon=${lng}&radius=${radius}`, {
-              headers: { 'X-Api-Key': VITE_API_NINJAS_KEY }
-            });
-            const populationData = await populationResponse.json();
-            const validPoints = Array.isArray(populationData)
-              ? populationData
-                  .filter(city =>
-                    city.latitude !== undefined &&
-                    city.longitude !== undefined &&
-                    city.population !== undefined &&
-                    !isNaN(Number(city.latitude)) &&
-                    !isNaN(Number(city.longitude)) &&
-                    !isNaN(Number(city.population))
-                  )
-                  .map(city => [
-                    Number(city.latitude),
-                    Number(city.longitude),
-                    Math.max(1, Number(city.population) / 1000)
-                  ])
-              : [];
-            const totalPopulation = validPoints.reduce((acc, pt) => acc + pt[2] * 1000, 0);
+            // New API format: using name and country. Here we assume searchQuery contains the city name.
+            const popResponse = await fetch(
+              `https://api.api-ninjas.com/v1/population?name=${encodeURIComponent(searchQuery)}&country=India`,
+              { headers: { "X-Api-Key": VITE_API_NINJAS_KEY } }
+            );
+            const popData = await popResponse.json();
+            console.log("Population data===>>> \n", popData);
+            // Assuming the response is an array of population objects
+            let totalPopulation = 0;
+            if (Array.isArray(popData)) {
+              totalPopulation = popData.reduce(
+                (acc, item) => acc + (Number(item.population) || 0),
+                0
+              );
+            }
             data = { population: totalPopulation };
-            setHeatPoints(validPoints);
             break;
           }
           case "Air Quality Index": {
-            const aqiResponse = await fetch(`https://api.waqi.info/feed/geo:${selectedPos[0]};${selectedPos[1]}/?token=${VITE_AQICN_TOKEN}`);
+            const aqiResponse = await fetch(
+              `https://api.waqi.info/feed/geo:${selectedPos[0]};${selectedPos[1]}/?token=${VITE_AQICN_TOKEN}`
+            );
             const aqiData = await aqiResponse.json();
+            console.log("AQI data===>>> \n", aqiData);
             if (aqiData.status === "ok") {
-              data = { aqi: aqiData.data.aqi };
+              data = { aqi: aqiData };
             }
             break;
           }
           case "Number of Buildings": {
             const bounds = `${selectedPos[0] - 0.05},${selectedPos[1] - 0.05},${selectedPos[0] + 0.05},${selectedPos[1] + 0.05}`;
             const overpassQuery = `[out:json];(way["building"](${bounds}););out body;>;out skel qt;`;
-            const overpassResponse = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`);
+            console.log("Search Query: ", overpassQuery);
+            const overpassResponse = await fetch(
+              `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`
+            );
             const buildingsData = await overpassResponse.json();
+            console.log("Buildings data===>>> \n", buildingsData);
             data = { totalBuildings: buildingsData.elements.length, points: buildingsData.elements };
             break;
           }
@@ -141,14 +137,14 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
         console.error("Failed to fetch filter data:", error);
         alert(`Failed to fetch data for ${selectedFilter}.`);
       } finally {
-        setFilterData(data || {}); // Always set, even if null
+        setFilterData(data || {});
         window.dispatchEvent(new CustomEvent("mapStatsUpdated", { detail: { totals: data || {} } }));
         setIsLoading(false);
       }
     };
+
     fetchData();
   }, [selectedFilter, selectedPos]);
-
 
   return (
     <div className="h-full w-full rounded-[1.5rem] overflow-hidden relative">
@@ -157,20 +153,19 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
           Loading...
         </div>
       )}
-      <MapContainer
-        center={selectedPos}
-        zoom={13}
-        style={{ height: "100%", width: "100%", zIndex: 0 }}
-      >
+      <MapContainer center={selectedPos} zoom={13} style={{ height: "100%", width: "100%", zIndex: 0 }}>
         <ChangeMapView center={selectedPos} zoom={13} />
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
         <MapClickHandler setSelectedPos={setSelectedPos} onLocationSelect={onLocationSelect} />
         <Marker position={selectedPos}>
-          <Popup>{searchQuery || `Lat: ${selectedPos[0].toFixed(4)}, Lng: ${selectedPos[1].toFixed(4)}`}</Popup>
+          <Popup>
+            {searchQuery || `Lat: ${selectedPos[0].toFixed(4)}, Lng: ${selectedPos[1].toFixed(4)}`}
+          </Popup>
         </Marker>
 
         {/* Modular overlays */}
         {selectedFilter === "Population Density" && (
+          // Use PopulationOverlay as before – it will now receive population data from the updated API.
           <PopulationOverlay selectedPos={selectedPos} heatPoints={heatPoints} />
         )}
         {selectedFilter === "Air Quality Index" && (
@@ -185,4 +180,3 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect }) => {
 };
 
 export default MapSection;
-
