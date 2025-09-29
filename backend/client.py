@@ -21,7 +21,7 @@ load_dotenv()
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 checkpointer = InMemorySaver()
 
-async def run_agent(message: str, session_id: str = "test-session"):
+async def run_agent(message: str, session_id: str = "test-session", latitude: str = None, longitude: str = None):
     
     # Spawn server.py using stdio transport with absolute paths and current Python
     python_exe = sys.executable or "python"
@@ -48,8 +48,17 @@ async def run_agent(message: str, session_id: str = "test-session"):
             
             async def _invoke():
                 config = {"configurable": {"thread_id": "1"}}
-                # Pass only the current user message to the agent
-                return await agent.ainvoke({"messages": message}, config=config)
+                
+                # Create context with location if provided
+                context = {"messages": message}
+                if latitude and longitude:
+                    context["location"] = {
+                        "latitude": latitude,
+                        "longitude": longitude
+                    }
+                
+                # Pass message and location context to the agent
+                return await agent.ainvoke(context, config=config)
             
             agent_response = await asyncio.wait_for(_invoke(), timeout=30)
 

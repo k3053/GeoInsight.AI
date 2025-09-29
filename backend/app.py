@@ -13,8 +13,8 @@ app = FastAPI(title="Location Intelligence", version="0.1")
 DIST_DIR = os.path.join("..", "frontend", "dist")
 ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
-# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
@@ -28,6 +28,8 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "test-session"
+    latitude: str = None
+    longitude: str = None
     # mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
@@ -46,7 +48,7 @@ def health() -> Dict[str, str]:
 async def chat_query(body: ChatRequest):
     try:
         # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        result = await run_agent(body.message)
+        result = await run_agent(body.message, session_id=body.session_id, latitude=body.latitude, longitude=body.longitude)
         # Normalize response to a simple string for JSON serialization
         final_text = None
         try:
