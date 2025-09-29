@@ -15,10 +15,13 @@ from prompt_library import REACT_AGENT_PROMPT
 from chat_history import create_chat_history
 import json
 from langgraph.checkpoint.memory import InMemorySaver
+from langchain_groq import ChatGroq
 
 load_dotenv()
 
-model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+# model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+model = ChatGroq(model="openai/gpt-oss-120b")
+
 checkpointer = InMemorySaver()
 
 async def run_agent(message: str, session_id: str = "test-session", latitude: str = None, longitude: str = None):

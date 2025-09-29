@@ -18,7 +18,6 @@ def add_numbers(num1: int, num2: int) -> int:
     return num1 + num2
 
 
-
 @mcp.tool()
 def web_search(query: str):
     """This tool does the web search using the users query"""
@@ -262,7 +261,6 @@ def search_places(query: str):
 
 
 
-
 @mcp.tool()
 def search_nearby_places(latitude, longitude, radius=1000, place_type="restaurant", max_results=10):
     """Search for nearby places using Google Places API"""
@@ -379,9 +377,6 @@ def compute_area_insights(
 #     except Exception as e:
 #         print(f"Error: {e}")
 #         return None
-
-
-
 
 
 
