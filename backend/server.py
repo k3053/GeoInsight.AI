@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import requests
 import googlemaps
+import overpy
 
 load_dotenv()
 
@@ -349,7 +350,73 @@ def compute_area_insights(
         print(f"Error: {e}")
         return None
 
+@mcp.tool()
+def count_nearby_buildings(latitude: float, longitude: float, radius_meters: int = 1000):
+    """
+    Counts buildings and analyzes their types around a specific lat/lon point using OpenStreetMap data.
+    
+    Parameters:
+    - latitude: The latitude of the center point.
+    - longitude: The longitude of the center point.
+    - radius_meters: The search radius in meters. Defaults to 1000m (1km).
+    
+    Returns:
+    A JSON object (dictionary) with the total building count, a breakdown of building types, and a list of building details.
+    """
+    api = overpy.Overpass()
+    
+    # Overpass API query to find buildings within the specified radius
+    query = f"""
+    [out:json];
+    (
+        way["building"](around:{radius_meters},{latitude},{longitude});
+        relation["building"](around:{radius_meters},{latitude},{longitude});
+    );
+    out body;
+    >;
+    out skel qt;
+    """
+    
+    try:
+        result = api.query(query)
+        
+        total_buildings = len(result.ways) + len(result.relations)
+        
+        building_types = {}
+        building_details = []
+        
+        all_elements = list(result.ways) + list(result.relations)
 
+        for element in all_elements:
+            # Get building type, default to 'yes' if not specified
+            building_type = element.tags.get("building", "yes")
+            building_types[building_type] = building_types.get(building_type, 0) + 1
+            
+            # Get representative coordinates for each building
+            center_node = None
+            if hasattr(element, 'center_lat'):
+                center_node = {"lat": float(element.center_lat), "lon": float(element.center_lon)}
+            elif element.nodes:
+                center_node = {"lat": float(element.nodes[0].lat), "lon": float(element.nodes[0].lon)}
+
+            building_details.append({
+                "id": element.id,
+                "type": building_type,
+                "name": element.tags.get("name"),
+                "coords": center_node
+            })
+            
+        return {
+            "totalBuildings": total_buildings,
+            "buildingTypes": building_types,
+            "points": building_details, # Renamed to 'points' for consistency with your frontend
+            "location": {"lat": latitude, "lon": longitude},
+            "radius": radius_meters
+        }
+    
+    except Exception as e:
+        print(f"Error in count_nearby_buildings: {e}")
+        return None
 
 # NOTE: Dont remove this
 # @mcp.tool()

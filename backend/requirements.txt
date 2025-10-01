@@ -13,3 +13,4 @@ fastapi[standard]
 astrapy
 langchain_astradb
 langchain_groq
+overpy

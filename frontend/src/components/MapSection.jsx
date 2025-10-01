@@ -251,12 +251,8 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
         {selectedFilter === "Air Quality Index" && (
           <AQIOverlay selectedPos={position} filterData={filterData} />
         )}
-        {selectedFilter === "Number of Buildings" && (
-          <>
-            <BuildingOverlay selectedPos={position} filterData={filterData} />
-            {/* <OSMBuildingsOverlay map={window.leafletMap} position={position} /> */}
-          </>
-        )}
+        
+        {selectedFilter === 'Number of Buildings' && <BuildingOverlay selectedPos={position} filterData={filterData} />}
         {selectedFilter === "Weather Forecast" && (
           <>
             <WeatherOverlay lat={position[0]} lon={position[1]} weatherData={filterData} />
