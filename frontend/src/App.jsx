@@ -3,14 +3,16 @@ import { Provider } from 'react-redux';
 import store from './store/dashboardSlice';
 import { auth } from './firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import Chatbot from './pages/Chatbot';
+import History from './pages/History';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('login'); // 'login', 'register'
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +20,6 @@ export default function App() {
       setUser(currentUser);
       setLoading(false);
     });
-
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -39,19 +39,20 @@ export default function App() {
     );
   }
 
-  // If a user is logged in, show the main application
-  if (user) {
-    return (
-      <Provider store={store}>
-        <HomePage handleLogout={handleLogout} />
-      </Provider>
-    );
-  }
+  return (
+    <Provider store={store}>
+      {/* <BrowserRouter> */}
+        <Routes>
+          {/* Auth routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-  // If no user, show login or register page
-  return view === 'login' ? (
-    <LoginPage setView={setView} />
-  ) : (
-    <RegisterPage setView={setView} />
+          {/* Protected routes */}
+          <Route path="/" element={user ? <HomePage handleLogout={handleLogout} /> : <Navigate to="/login" />} />
+          <Route path="/Chatbot" element={user ? <Chatbot /> : <Navigate to="/login" />} />
+          <Route path="/History" element={user ? <History /> : <Navigate to="/login" />} />
+        </Routes>
+      {/* </BrowserRouter> */}
+    </Provider>
   );
 }

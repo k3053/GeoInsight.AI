@@ -35,16 +35,22 @@ const ChatSection = () => {
     setIsLoading(true);
 
     try {
-      // Make the POST request to your FastAPI backend
+      // Build the request body
+      const requestBody = {
+        message: text,
+        session_id: "user-session-123", // Ideally, this should come from your auth user.uid
+      };
+      
+      // If coordinates are selected on the map, add them to the request
+      if (selectedCoords) {
+        requestBody.latitude = selectedCoords.lat;
+        requestBody.longitude = selectedCoords.lng;
+      }
+
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: text,
-          session_id: "user-session-123", // Should be dynamic in a real app
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -53,9 +59,14 @@ const ChatSection = () => {
 
       const data = await response.json();
       
-      // Add the agent's response to the UI
+      // Add the agent's text response to the UI
       const agentMessage = { sender: "agent", text: data.answer };
       setMessages((prevMessages) => [...prevMessages, agentMessage]);
+
+      // If the response includes location data, pass it up to HomePage
+      if (data.location) {
+        onLocationFound(data.location);
+      }
 
     } catch (error) {
       console.error("Failed to fetch from chat API:", error);

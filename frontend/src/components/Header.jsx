@@ -1,10 +1,15 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search } from "lucide-react";
 import Filters from './Filters';
 import { LogOut } from 'lucide-react';
+import { MdMoreVert } from 'react-icons/md';
 import { auth } from '../firebaseConfig';
 
 const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handleLogout }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState([]);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const cacheRef = useRef({}); // cache for search queries
@@ -85,14 +90,44 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
   };
 
   return (
-    // Added mx-5 for horizontal margins and removed w-full
     <header 
       className="bg-[var(--theme-surface)] border-x border-b border-[var(--theme-border)] rounded-b-[1.5rem] 
                  p-4 flex flex-col lg:flex-row items-center justify-between gap-2 lg:gap-0 flex-shrink-0
-                 shadow-[0_8px_32px_rgba(0,0,0,0.4)] mx-0"
+                 shadow-[0_8px_32px_rgba(0,0,0,0.4)] mx-0 relative"
     >
-      {/* Left: Title */}
-      <div className="flex gap-0">
+      {/* Left: Title & Menu */}
+      <div className="flex gap-0 items-center">
+        {/* Menu Icon */}
+        <button
+          className="mr-4 p-2 rounded hover:bg-gray-700 focus:outline-none"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label="Open menu"
+        >
+          <span className="block w-6 h-6">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <rect y="5" width="24" height="2" rx="1" fill="#fff" />
+              <rect y="11" width="24" height="2" rx="1" fill="#fff" />
+              <rect y="17" width="24" height="2" rx="1" fill="#fff" />
+            </svg>
+          </span>
+        </button>
+        {/* Dropdown Menu */}
+        {menuOpen && (
+          <div className="absolute left-0 top-16 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-lg min-w-[160px] flex flex-col">
+            <button
+              className="px-5 py-3 text-left hover:bg-gray-800 text-white border-b border-gray-800"
+              onClick={() => { setMenuOpen(false); navigate('/Chatbot'); }}
+            >Chatbot</button>
+            <button
+              className="px-5 py-3 text-left hover:bg-gray-800 text-white border-b border-gray-800"
+              onClick={() => { setMenuOpen(false); navigate('/History'); }}
+            >History</button>
+            <button
+              className="px-5 py-3 text-left hover:bg-gray-800 text-red-500"
+              onClick={() => { setMenuOpen(false); handleLogout(); }}
+            >Logout</button>
+          </div>
+        )}
         <h1 className="text-2xl font-bold text-white tracking-wider">
           GeoInsight<span className="text-[var(--theme-primary)]">AI</span>
         </h1>
@@ -135,18 +170,38 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
       </div>
     
       
-      {/* Right: Filters & Logout Button */}
-      <div className="w-full lg:w-auto lg:flex-1 flex items-center justify-center lg:justify-end gap-4">
+      {/* Right: Filters + More Filters */}
+      <div className="w-full lg:w-auto lg:flex-1 flex items-center justify-center lg:justify-end gap-4 relative">
         <Filters locationSelected={locationSelected} />
-        
-        {user && (
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-red-600/20 border border-red-600/50 hover:bg-red-600/50 rounded-lg transition-colors"
-              title={`Log out ${user.email}`}
-            >
-              <LogOut size={16} />
-            </button>
+        {/* More filters icon */}
+        <button
+          className="ml-2 p-2 rounded hover:bg-black focus:outline-none"
+          onClick={() => setMoreFiltersOpen(v => !v)}
+          aria-label="More filters"
+        >
+          <MdMoreVert size={24} />
+        </button>
+        {/* More filters dropdown */}
+        {moreFiltersOpen && (
+          <div className="absolute right-0 top-16 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-lg min-w-[160px] flex flex-col">
+            <ul className="py-2">
+              <li>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Elevation</button>
+              </li>
+              <li>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Solar</button>
+              </li>
+              <li>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Imagery Insights</button>
+              </li>
+              <li>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Places Insights</button>
+              </li>
+              <li>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Roads Management Insights</button>
+              </li>
+            </ul>
+          </div>
         )}
       </div>
     </header>

@@ -4,7 +4,7 @@ import { configureStore, createSlice } from "@reduxjs/toolkit";
 const dashboardSlice = createSlice({
     name: "dashboard",
     initialState: {
-        filters: ["Air Quality Index", "Population Density", "% of GreenCover"],
+    filters: ["Air Quality Index", "Elevation", "% of GreenCover"],
         selectedFilter: null,
         searchQuery: "",
     },

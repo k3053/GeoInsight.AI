@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setFilter } from '../store/dashboardSlice'; // Action to set the filter in Redux
-import { FaWind, FaUsers, FaLeaf, FaBuilding } from 'react-icons/fa';
+import { FaWind, FaMountain, FaLeaf, FaBuilding } from 'react-icons/fa';
 
 const Filters = ({ locationSelected }) => {
   const dispatch = useDispatch();
@@ -9,13 +9,13 @@ const Filters = ({ locationSelected }) => {
   
   const filters = [
     "Air Quality Index",
-    "Population Density",
+    "Weather Forecast",
     "Number of Buildings"
   ];
-  
+
   const icons = {
     "Air Quality Index": <FaWind />,
-    "Population Density": <FaUsers />,
+    "Weather Forecast": <FaLeaf />,
     "Number of Buildings": <FaBuilding />,
   };
 

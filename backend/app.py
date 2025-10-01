@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from typing import Dict
+from typing import Dict, Optional, Any
 from client import run_agent
 import asyncio
 import logging
@@ -28,9 +28,19 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "test-session"
-    latitude: str = None
-    longitude: str = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     # mcp_url: str = "http://localhost:8000/mcp"
+
+# A new response model for clarity
+class LocationData(BaseModel):
+    latitude: float
+    longitude: float
+    displayName: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    answer: str
+    location: Optional[LocationData] = None
 
 @app.get("/")
 def read_root():
@@ -44,43 +54,25 @@ def health() -> Dict[str, str]:
         "service": "Location Intelligence"    
     }
 
-@app.post("/chat/query")
+@app.post("/chat/query", response_model=ChatResponse)
 async def chat_query(body: ChatRequest):
     try:
-        # If mcp_url is provided, use streamable-http; otherwise spawn stdio server automatically
-        result = await run_agent(body.message, session_id=body.session_id, latitude=body.latitude, longitude=body.longitude)
-        # Normalize response to a simple string for JSON serialization
-        final_text = None
-        try:
-            # LangGraph return often looks like { 'messages': [ BaseMessage... ] }
-            if isinstance(result, dict) and "messages" in result:
-                msgs = result.get("messages") or []
-                if msgs:
-                    last = msgs[-1]
-                    content = getattr(last, "content", None)
-                    if isinstance(content, str):
-                        final_text = content
-                    elif isinstance(content, list) and content:
-                        # Some models return list of content parts
-                        # Take text parts if present
-                        text_parts = [p.get("text") for p in content if isinstance(p, dict) and p.get("type") == "text"]
-                        final_text = "\n".join([t for t in text_parts if t]) or None
-            # Handle direct AIMessage/BaseMessage return shape
-            if not final_text and hasattr(result, "content"):
-                content = getattr(result, "content", None)
-                if isinstance(content, str):
-                    final_text = content
-                elif isinstance(content, list) and content:
-                    text_parts = [p.get("text") for p in content if isinstance(p, dict) and p.get("type") == "text"]
-                    final_text = "\n".join([t for t in text_parts if t]) or None
-        except Exception:
-            pass
+        # run_agent now returns a dictionary with 'text' and 'location'
+        result = await run_agent(
+            body.message, 
+            session_id=body.session_id, 
+            latitude=body.latitude, 
+            longitude=body.longitude
+        )
 
-        if not final_text:
-            # Fallback: string-cast the result
-            final_text = str(result)
+        # Construct the response based on the result from run_agent
+        response_data = {
+            "answer": result.get("text") or "Sorry, I could not process your request.",
+            "location": result.get("location")
+        }
+        
+        return response_data
 
-        return {"answer": final_text}
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Agent timed out while processing the request")
     except Exception as e:

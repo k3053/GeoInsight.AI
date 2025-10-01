@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
 // Import modular chart and legend components
-import PopulationCharts from "./charts/PopulationCharts";
+// import PopulationCharts from "./charts/PopulationCharts";
 import AQICharts from "./charts/AQICharts";
 import BuildingCharts from "./charts/BuildingCharts";
-import PopulationLegend from "./legends/PopulationLegend";
+// import PopulationLegend from "./legends/PopulationLegend";
 import AQILegend from "./legends/AQILegend";
 import BuildingLegend from "./legends/BuildingLegend";
+import WeatherLegend from "./map-overlays/WeatherLegend";
+import WeatherCharts from "./map-overlays/WeatherCharts";
 import { Info } from "lucide-react";
 
 const DashboardCharts = () => {
@@ -49,12 +51,24 @@ const DashboardCharts = () => {
     }
 
     switch (selectedFilter) {
-      case "Population Density":
+      case "Elevation":
+        // Elevation data is under stats.totals.elevations
+        const elevations = stats?.totals?.elevations;
         return (
-          <>
-            <PopulationLegend />
-            <PopulationCharts stats={stats} />
-          </>
+          <div className="flex flex-col items-center justify-center h-full text-center text-[var(--theme-text-secondary)]">
+            <h3 className="font-semibold text-lg">Elevation Data</h3>
+            {elevations ? (
+              <ul className="mt-2">
+                {elevations.map((e, idx) => (
+                  <li key={idx}>
+                    Lat: {e.latitude}, Lng: {e.longitude}, Elevation: {e.elevation} m
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No elevation data available.</p>
+            )}
+          </div>
         );
       case "Air Quality Index":
         return (
@@ -68,6 +82,13 @@ const DashboardCharts = () => {
           <>
             <BuildingLegend />
             <BuildingCharts stats={stats} />
+          </>
+        );
+        case "Weather Forecast":
+         return (
+          <>
+            <WeatherLegend weather={stats?.weather} />
+            <WeatherCharts weather={stats?.weather} />
           </>
         );
       default:
