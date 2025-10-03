@@ -66,8 +66,9 @@ const MapClickHandler = ({ onLocationSelect, setPosition }) => {
 
 // The API keys from the .env file
 const VITE_API_WEATHER_KEY = import.meta.env.VITE_API_WEATHER_KEY;
-const VITE_API_NINJAS_KEY = import.meta.env.VITE_API_NINJAS_KEY;
+// const VITE_API_NINJAS_KEY = import.meta.env.VITE_API_NINJAS_KEY;
 const VITE_AQICN_TOKEN = import.meta.env.VITE_AQICN_TOKEN;
+const VITE_API_WEATHER_FORECAST = import.meta.env.VITE_API_WEATHER_FORECAST;
 
 const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFromChat }) => {
   // const [selectedPos, setSelectedPos] = useState([21.1702, 72.8311]); // Default: Surat
@@ -146,17 +147,28 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
       let data = null;
       try {
         switch (selectedFilter) {
-          case "Weather Forecast":{
-            // Example: fetch weather data using API Ninjas
+          // Inside your data fetching effect's switch-case for "Weather Forecast":
+          case "Weather Forecast": {
+            const lat = position[0];
+            const lon = position[1];
+            // Call the API Ninjas weather endpoint
             const weatherResponse = await fetch(
-              `https://api.api-ninjas.com/v1/weather?lat=${position[0]}&lon=${position[1]}`,
-              {
-                headers: { 'X-Api-Key': "IEpFolysF3PnTtN2C0gGWQ==AMrDrs6yYmwiTfqx" }
-              }
+              `https://api.api-ninjas.com/v1/weather?lat=${lat}&lon=${lon}`,
+              { headers: { 'X-Api-Key': VITE_API_WEATHER_KEY } }
             );
-            const weatherData = await weatherResponse.json();
-            console.log("Weather data===>>> \n", weatherData);
-            data = { weather: weatherData };
+            const weatherData1 = await weatherResponse.json();
+            console.log("Weather data from API Ninjas: ", weatherData1);
+
+            // Call the WeatherAPI.com forecast endpoint using the provided key
+            const weatherApiUrl = `http://api.weatherapi.com/v1/forecast.json?key=${VITE_API_WEATHER_FORECAST}&q=${lat},${lon}&days=1`;
+            const weatherApiResponse = await fetch(weatherApiUrl);
+            const weatherData2 = await weatherApiResponse.json();
+            // console.log("Weather data from WeatherAPI.com: ", weatherData2);
+
+            // Merge responses (WeatherAPI data may have forecast & history while API Ninjas gives current conditions)
+            const mergedWeatherData = { ...weatherData1, ...weatherData2 };
+            console.log("Weather data: ", mergedWeatherData);
+            data = { weather: mergedWeatherData };
             break;
           }
           case "Elevation": {
@@ -252,10 +264,12 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
           <AQIOverlay selectedPos={position} filterData={filterData} />
         )}
         
-        {selectedFilter === 'Number of Buildings' && <BuildingOverlay selectedPos={position} filterData={filterData} />}
+        {selectedFilter === 'Number of Buildings' && 
+          <BuildingOverlay selectedPos={position} filterData={filterData} />
+        }
         {selectedFilter === "Weather Forecast" && (
           <>
-            <WeatherOverlay lat={position[0]} lon={position[1]} weatherData={filterData} />
+            <WeatherOverlay selectedPos={position} weatherData={filterData} />
           </>
         )}
       </MapContainer>

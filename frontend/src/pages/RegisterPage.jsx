@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
-const RegisterPage = ({ setView }) => {
+const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -16,6 +18,7 @@ const RegisterPage = ({ setView }) => {
     }
     try {
       await createUserWithEmailAndPassword(auth, email, password);
+      navigate('/login');
       // Auth state change will handle navigation
     } catch (err) {
       setError('Failed to create an account. The email may already be in use.');
@@ -51,13 +54,13 @@ const RegisterPage = ({ setView }) => {
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" className="w-full btn-primary">
+          <button type="submit" className="w-full btn-primary cursor-pointer" onClick={handleRegister}>
             Sign Up
           </button>
         </form>
         <p className="text-center text-gray-400">
           Already have an account?{' '}
-          <button onClick={() => setView('login')} className="text-[var(--theme-primary)] hover:underline">
+          <button onClick={() => navigate('/login')} className="text-[var(--theme-primary)] hover:underline cursor-pointer">
             Sign In
           </button>
         </p>

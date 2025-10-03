@@ -8,8 +8,9 @@ import BuildingCharts from "./charts/BuildingCharts";
 // import PopulationLegend from "./legends/PopulationLegend";
 import AQILegend from "./legends/AQILegend";
 import BuildingLegend from "./legends/BuildingLegend";
-import WeatherLegend from "./map-overlays/WeatherLegend";
-import WeatherCharts from "./map-overlays/WeatherCharts";
+import WeatherLegend from "./legends/WeatherLegend";
+import WeatherCharts from "./charts/WeatherCharts";
+
 import { Info } from "lucide-react";
 
 const DashboardCharts = () => {
@@ -19,6 +20,7 @@ const DashboardCharts = () => {
   // Listen for map stats events from MapSection
   useEffect(() => {
     const handler = (e) => setStats(e.detail);
+    console.log("In Dashboard Charts==> ", stats?.totals?.weather);
     window.addEventListener("mapStatsUpdated", handler);
     return () => window.removeEventListener("mapStatsUpdated", handler);
   }, []);
@@ -87,10 +89,17 @@ const DashboardCharts = () => {
         case "Weather Forecast":
          return (
           <>
-            <WeatherLegend weather={stats?.weather} />
-            <WeatherCharts weather={stats?.weather} />
+            <WeatherLegend weather={stats?.totals?.weather} />
+            <WeatherCharts weather={stats?.totals?.weather} />
           </>
         );
+        // case "Elevation":
+        //  return (
+        //   <>
+        //     <ElevationLegend weather={stats?.elevation} />
+        //     <ElevationCharts weather={stats?.elevation} />
+        //   </>
+        // );
       default:
         return <NoFilterSelected />;
     }
