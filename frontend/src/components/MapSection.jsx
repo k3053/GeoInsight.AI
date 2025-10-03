@@ -203,12 +203,18 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
             break;
           }
           case "Number of Buildings": {
-            const buildingsResponse = await fetch("http://127.0.0.1:8000/data/buildings");
-            const buildingsData = await buildingsResponse.json();
-            console.log("Buildings data from local API ===>>> \n", buildingsData);
-            data = { totalBuildings: buildingsData.length, points: buildingsData };
-            break;
-          }          
+              const lat = position[0];
+              const lng = position[1];
+              if (lat == null || lng == null) {
+                console.error("Missing coordinates for buildings API call");
+                break;
+              }
+              const buildingsResponse = await fetch(`http://127.0.0.1:8000/data/buildings?latitude=${lat}&longitude=${lng}`);
+              const buildingsData = await buildingsResponse.json();
+              console.log("Buildings data from local API ===>>> \n", buildingsData);
+              data = { totalBuildings: buildingsData.totalBuildings, points: buildingsData };
+              break;
+            }     
           default:
             break;
         }

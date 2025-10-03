@@ -80,12 +80,16 @@ async def chat_query(body: ChatRequest):
         logging.exception("/chat/query failed")
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.get("/data/buildings")
-def get_building_data(latitude: float, longitude: float, radius_meters: int = 1000):
+# @app.get("/data/buildings")
+
+def get_building_data(latitude: float, longitude: float, radius_meters):
     api = overpy.Overpass()
     query = f"""
-    [out:json];(way["building"](around:{radius_meters},{latitude},{longitude});relation["building"](around:{radius_meters},{latitude},{longitude}););out body;>;out skel qt;
+    [out:json];(way["building"](around:{radius_meters},{latitude},{longitude});
+    relation["building"](around:{radius_meters},{latitude},{longitude}););
+    out body;>;out skel qt;
     """
+    print("Query:", query)
     try:
         result = api.query(query)
         total_buildings = len(result.ways) + len(result.relations)
@@ -93,16 +97,26 @@ def get_building_data(latitude: float, longitude: float, radius_meters: int = 10
         all_elements = list(result.ways) + list(result.relations)
         for element in all_elements:
             center_node = None
-            if hasattr(element, 'center_lat'):
-                center_node = {"lat": float(element.center_lat), "lon": float(element.center_lon)}
-            elif element.nodes:
-                center_node = {"lat": float(element.nodes[0].lat), "lon": float(element.nodes[0].lon)}
-            building_details.append({
-                "id": element.id,
-                "type": element.tags.get("building", "yes"),
-                "name": element.tags.get("name"),
-                "coords": center_node
-            })
+            try:
+                # Try to use element.center_lat if available and not None
+                if hasattr(element, 'center_lat') and element.center_lat is not None and element.center_lon is not None:
+                    center_node = {"lat": float(element.center_lat), "lon": float(element.center_lon)}
+                # Otherwise, use the first node if available and has valid coordinates
+                elif element.nodes and len(element.nodes) > 0:
+                    node = element.nodes[0]
+                    if node.lat is not None and node.lon is not None:
+                        center_node = {"lat": float(node.lat), "lon": float(node.lon)}
+            except Exception as conv_err:
+                print(f"Error converting coordinates for element {element.id}: {conv_err}")
+
+            if center_node:
+                building_details.append({
+                    "id": element.id,
+                    "type": element.tags.get("building", "yes"),
+                    "name": element.tags.get("name"),
+                    "coords": center_node
+                })
+        print("Buildings Data:", building_details)
         return {
             "totalBuildings": total_buildings,
             "points": building_details,
@@ -110,13 +124,13 @@ def get_building_data(latitude: float, longitude: float, radius_meters: int = 10
     except Exception as e:
         print(f"Error in get_building_data: {e}")
         return None
-
+    
 @app.get("/data/buildings")
-async def get_buildings(lat: float, lon: float, radius: int = 1000):
+async def get_buildings(latitude: float, longitude: float):
     """
     Endpoint to get building count and details for a specific location.
-    """
-    data = get_building_data(latitude=lat, longitude=lon, radius_meters=radius)
+    """ 
+    data = get_building_data(latitude=latitude, longitude=longitude, radius_meters=1000)
     if data is None:
         raise HTTPException(status_code=500, detail="Failed to fetch data from Overpass API")
     return data
