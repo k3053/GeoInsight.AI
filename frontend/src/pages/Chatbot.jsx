@@ -1,107 +1,178 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { MdArrowUpward, MdChat } from "react-icons/md";
+import MapSection from "../components/MapSection";
+import { MapContainer, TileLayer } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
-import React, { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import { MdArrowUpward, MdChat } from 'react-icons/md';
+const API_URL = "http://localhost:8000/chat/query";
 
 const suggestedQuestions = [
-	"What are the advantages of using Next.js?",
-	"Write code to demonstrate Dijkstra's algorithm",
-	"Help me write an essay about Silicon Valley",
-	"What is the weather in San Francisco?",
+  "What are the advantages of using Next.js?",
+  "Write code to demonstrate Dijkstra's algorithm",
+  "Help me write an essay about Silicon Valley",
+  "What is the weather in San Francisco?",
 ];
 
 export default function Chatbot() {
-		const [input, setInput] = useState("");
-		const [messages, setMessages] = useState([]);
-		const [showSuggestions, setShowSuggestions] = useState(true);
-	const navigate = useNavigate();
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const chatContainerRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-		const handleSend = () => {
-			if (input.trim()) {
-				setMessages([...messages, { role: "user", text: input }]);
-				setInput("");
-				setShowSuggestions(false);
-			}
+   // ✅ extract coords + initial message
+  const { initialMessage, coords } = location.state || {};
+  const mapCenter = coords || [20.5937, 78.9629]; // fallback to India if none
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Pre-fill initial query if passed from ChatSection
+	useEffect(() => {
+		if (initialMessage) {
+			handleSend(initialMessage);
+		}
+	}, []); 
+
+
+    const handleSend = async (text = input) => {
+		const messageText = text.trim();
+		if (!messageText) return;
+
+		const userMessage = { role: "user", text: messageText };
+		setMessages((prev) => [...prev, userMessage]);
+		setInput("");
+		setShowSuggestions(false);
+		setIsLoading(true);
+
+		try {
+		const response = await fetch(API_URL, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+			message: messageText,
+			session_id: "user-session-123", 
+			location: coords || null,   // ✅ send coords if available
+			}),
+		});
+		} catch (error) {
+		console.error("Failed to fetch from chat API:", error);
+		const errorMessage = {
+			role: "agent",
+			text: "Sorry, I'm having trouble connecting. Please try again later.",
 		};
+		setMessages((prev) => [...prev, errorMessage]);
+		}
+	}
+  return (
+    <div className="min-h-screen bg-[#111] text-white flex relative font-sans">
+      {/* Left 50% Map */}
+      <div className="w-1/2 h-screen">
+        {/* <MapContainer center={[20.5937, 78.9629]} zoom={5} className="w-full h-full">
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        </MapContainer> */}
+		<MapSection locationFromChat={mapCenter} />
+      </div>
 
-	return (
-		<div className="min-h-screen bg-[#111] text-white flex flex-col relative font-sans">
-			{/* Header bar */}
-			<header className="bg-[var(--theme-surface)] border-x border-b border-[var(--theme-border)] rounded-b-[1.5rem] p-4 flex items-center gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] mx-0">
-				{/* Back button */}
-				<button
-					className="p-2 rounded hover:bg-gray-700 focus:outline-none mr-2"
-					onClick={() => navigate('/')}
-					aria-label="Go back"
-				>
-					<span className="block w-6 h-6">
-						<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-							<path d="M15 18l-6-6 6-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					</span>
-				</button>
-				{/* Logo and title */}
-				<h1 className="text-2xl font-bold text-white tracking-wider">
-					GeoInsight<span className="text-[var(--theme-primary)]">AI</span>
-				</h1>
-				<span className="ml-4 text-lg text-gray-400 font-semibold">Chatbot</span>
-			</header>
+      {/* Right 50% Chat Interface */}
+      <div className="w-1/2 flex flex-col relative border-l border-[#222]">
+        {/* Header */}
+        <header className="bg-[var(--theme-surface)] border-b border-[var(--theme-border)] p-4 flex items-center gap-4 shadow-md">
+          <button
+            className="p-2 rounded hover:bg-gray-700"
+            onClick={() => navigate("/")}
+          >
+            <svg width="24" height="24" fill="none">
+              <path
+                d="M15 18l-6-6 6-6"
+                stroke="#fff"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <h1 className="text-xl font-bold">
+            GeoInsight<span className="text-[var(--theme-primary)]">AI</span>
+          </h1>
+          <span className="ml-2 text-gray-400 font-semibold">Chatbot</span>
+        </header>
 
-			{/* Main content */}
-					<div className="flex-1 flex flex-col items-center justify-center px-4">
-						{/* Chatbot icon above greeting */}
-						<div className="mt-16 mb-2">
-							<MdChat size={48} className="mx-auto text-[var(--theme-primary)]" />
-						</div>
-						<div className="text-3xl font-bold mb-2 text-white">Hello there!</div>
-						<div className="text-xl text-gray-400 mb-10">How can I help you today?</div>
+        {/* Chat Area */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 flex flex-col px-4 py-6 overflow-y-auto"
+        >
+          {/* Suggestions */}
+          {showSuggestions && (
+            <div className="flex flex-wrap gap-3 justify-center mb-6">
+              {suggestedQuestions.map((q, i) => (
+                <button
+                  key={i}
+                  className="bg-[#181818] text-white px-6 py-2 rounded-full shadow hover:bg-[#222] transition text-sm"
+                  onClick={() => handleSend(q)}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
-						{/* Suggested questions (hide after message sent) */}
-						{showSuggestions && (
-							<div className="flex flex-wrap gap-4 justify-center mb-10">
-								{suggestedQuestions.map((q, i) => (
-									<button
-										key={i}
-										className="bg-[#181818] text-white px-6 py-3 rounded-full shadow hover:bg-[#222] transition text-base font-medium border border-[#222]"
-										onClick={() => setInput(q)}
-									>
-										{q}
-									</button>
-								))}
-							</div>
-						)}
+          {/* Messages */}
+          {messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`mb-3 flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`px-4 py-2 rounded-lg max-w-xs md:max-w-md ${
+                  msg.role === "user"
+                    ? "bg-[#64ffda] text-black"
+                    : "bg-gray-700 text-white"
+                }`}
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
 
-						{/* Chat messages (hidden until used) */}
-						{messages.length > 0 && (
-							<div className="w-full max-w-2xl mx-auto mb-8">
-								{messages.map((msg, idx) => (
-									<div key={idx} className={`mb-2 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-										<div className={`px-4 py-2 rounded-lg ${msg.role === "user" ? "bg-[#222] text-white" : "bg-[#333] text-gray-200"}`}>{msg.text}</div>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-700 text-white p-3 rounded-lg">
+                <span className="animate-pulse">Thinking...</span>
+              </div>
+            </div>
+          )}
+        </div>
 
-			{/* Input bar */}
-			<div className="w-full px-0 py-6 bg-[#111] border-t border-[#222] flex items-center justify-center fixed bottom-0 left-0">
-				<div className="w-full max-w-2xl flex items-center gap-2">
-					<input
-						className="flex-1 bg-[#181818] text-white px-4 py-3 rounded-full border border-[#222] focus:outline-none focus:ring-2 focus:ring-[#333] text-base"
-						placeholder="Send a message..."
-						value={input}
-						onChange={e => setInput(e.target.value)}
-						onKeyDown={e => e.key === 'Enter' && handleSend()}
-					/>
-								<button
-									className="bg-[#181818] text-white px-4 py-3 rounded-full font-semibold flex items-center gap-2 hover:bg-[#222] transition"
-									onClick={handleSend}
-									aria-label="Send message"
-								>
-									<MdArrowUpward size={24} />
-								</button>
-				</div>
-			</div>
-		</div>
-	);
+        {/* Input */}
+        <div className="p-4 border-t border-[#222] flex items-center gap-2">
+          <input
+            className="flex-1 bg-[#181818] text-white px-4 py-2 rounded-full border border-[#222] focus:outline-none"
+            placeholder="Send a message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          />
+          <button
+            className="bg-[#181818] px-4 py-2 rounded-full hover:bg-[#222]"
+            onClick={() => handleSend()}
+          >
+            <MdArrowUpward size={22} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
