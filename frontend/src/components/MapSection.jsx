@@ -203,17 +203,12 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
             break;
           }
           case "Number of Buildings": {
-            const bounds = `${position[0] - 0.05},${position[1] - 0.05},${position[0] + 0.05},${position[1] + 0.05}`;
-            const overpassQuery = `[out:json];(way["building"](${bounds}););out body;>;out skel qt;`;
-            console.log("Search Query: ", overpassQuery);
-            const overpassResponse = await fetch(
-              `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`
-            );
-            const buildingsData = await overpassResponse.json();
-            console.log("Buildings data===>>> \n", buildingsData);
-            data = { totalBuildings: buildingsData.elements.length, points: buildingsData.elements };
+            const buildingsResponse = await fetch("http://127.0.0.1:8000/data/buildings");
+            const buildingsData = await buildingsResponse.json();
+            console.log("Buildings data from local API ===>>> \n", buildingsData);
+            data = { totalBuildings: buildingsData.length, points: buildingsData };
             break;
-          }
+          }          
           default:
             break;
         }
