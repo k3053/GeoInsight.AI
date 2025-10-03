@@ -141,7 +141,7 @@ export default function AQICharts({ stats }) {
             <LineChart width={350} height={280} data={lineData}>
               <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
               <XAxis dataKey="time" />
-              <YAxis domain={[0, 500]} />
+              <YAxis domain={[0, 170]} />
               <Tooltip formatter={(val) => `${val} AQI`} />
               <Line type="monotone" dataKey="value" stroke="#82ca9d" />
             </LineChart>

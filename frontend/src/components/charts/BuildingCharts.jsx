@@ -89,15 +89,28 @@ import {
 
 const COLORS = ["#42A5F5", "#90CAF9", "#66BB6A", "#FFA726", "#F4511E", "#E53935", "#8E24AA", "#3949AB"];
 
+// Helper function to shorten labels
+const shortenType = (type) => {
+  if (!type) return "unknown";
+  const lower = type.toLowerCase();
+  if (lower === "yes") return "old";
+  if (lower === "apartments" || lower === "apartment") return "apart";
+  if (lower === "residential") return "resident";
+  if (lower === "commercial") return "commerce";
+  return type;
+};
+
 export default function BuildingCharts({ stats }) {
   // Ensure that points is an array (if not, fallback to an empty array)
   const points = stats?.totals?.points?.points;
-  console.log("points:", points);
+  console.log("points:", stats);
   
   // Build frequency map by building type (defaulting to "unknown" if missing)
+  // Re-aggregate using shortenType for the building type keys.
   const typeMap = {};
   points.forEach(point => {
-    const type = point && point.type ? point.type : "unknown";
+    const rawType = point && point.type ? point.type : "unknown";
+    const type = shortenType(rawType);
     typeMap[type] = (typeMap[type] || 0) + 1;
   });
   console.log("typeMap:", typeMap);
@@ -131,36 +144,47 @@ export default function BuildingCharts({ stats }) {
       <div className="grid md:grid-rows-2 gap-6">
         {/* Pie Chart */}
         <div>
-          <PieChart width={300} height={280}>
+          <p className="text-xl text-gray-200 mt-2">
+            Proportion of each detected building type:
+          </p>
+          <PieChart width={400} height={350}>
             <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={100} label>
               {pieData.map((entry, idx) => (
                 <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip />
-            <Legend verticalAlign="top" height={36} />
+            <Legend verticalAlign="bottom" height={36} />
           </PieChart>
-          <p className="text-xs text-gray-400 mt-2">
-            Proportion of each detected building type.
-          </p>
+          
         </div>
         
         {/* Bar Chart */}
         <div>
-          <BarChart width={300} height={280} data={typeData} margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
-            <XAxis dataKey="type" tick={{ fontSize: 12 }} />
-            <YAxis tick={{ fontSize: 12 }} />
-            <CartesianGrid strokeDasharray="3 3" />
-            <Tooltip />
-            <Bar dataKey="count">
-              {typeData.map((entry, idx) => (
-                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xl text-gray-200 mt-2">
             Count of each building type.
           </p>
+            <BarChart
+              width={400}
+              height={420}
+              data={typeData}
+              margin={{ top: 20, right: 20, bottom: 20, left: -25 }}
+            >
+              {/* Rotate the XAxis tick labels  -45 degrees, show all labels */}
+              <XAxis
+                dataKey="type"
+                tick={{ fontSize: 16, angle: -30, textAnchor: "end" }}
+                interval={0}
+              />
+              <YAxis tick={{ fontSize: 16 }} />
+              <CartesianGrid strokeDasharray="3 3" />
+              <Tooltip />
+              <Bar dataKey="count">
+                {typeData.map((entry, idx) => (
+                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
         </div>
       </div>
     </div>

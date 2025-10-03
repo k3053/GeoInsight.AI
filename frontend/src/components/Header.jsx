@@ -174,13 +174,13 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
       <div className="w-full lg:w-auto lg:flex-1 flex items-center justify-center lg:justify-end gap-4 relative">
         <Filters locationSelected={locationSelected} />
         {/* More filters icon */}
-        <button
+        {/* <button
           className="ml-2 p-2 rounded hover:bg-black focus:outline-none"
           onClick={() => setMoreFiltersOpen(v => !v)}
           aria-label="More filters"
         >
           <MdMoreVert size={24} />
-        </button>
+        </button> */}
         {/* More filters dropdown */}
         {moreFiltersOpen && (
           <div className="absolute right-0 top-16 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-lg min-w-[160px] flex flex-col">

@@ -155,9 +155,9 @@ export default function WeatherCharts({ weather }) {
       {/* Hourly Forecast Line Chart */}
       {hourlyData.length > 0 && (
         <div className="mt-4">
-          <div className="font-bold mb-1 text-xs">Hourly Forecast (°C)</div>
+          <div className="font-bold mb-1">Hourly Forecast (°C)</div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={hourlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <LineChart data={hourlyData} margin={{ top: 5, right: 40, left: -30, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
               <XAxis dataKey="time" tick={{ fontSize: 10 }} />
               <YAxis domain={["dataMin - 2", "dataMax + 2"]} tick={{ fontSize: 10 }} />

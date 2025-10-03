@@ -78,16 +78,14 @@ async def chat_query(body: ChatRequest):
         logging.exception("/chat/query failed")
         raise HTTPException(status_code=500, detail=str(e))
     
-# @app.get("/data/buildings")
-
-def get_building_data(latitude: float, longitude: float, radius_meters):
+def get_building_data(latitude: float, longitude: float, radius_meters: int = 1000):
     api = overpy.Overpass()
     query = f"""
     [out:json];(way["building"](around:{radius_meters},{latitude},{longitude});
     relation["building"](around:{radius_meters},{latitude},{longitude}););
     out body;>;out skel qt;
     """
-    print("Query:", query)
+    # print("Query:", query)
     try:
         result = api.query(query)
         total_buildings = len(result.ways) + len(result.relations)
@@ -114,7 +112,7 @@ def get_building_data(latitude: float, longitude: float, radius_meters):
                     "name": element.tags.get("name"),
                     "coords": center_node
                 })
-        print("Buildings Data:", building_details)
+        # print("Buildings Data:", building_details)
         return {
             "totalBuildings": total_buildings,
             "points": building_details,
@@ -122,7 +120,7 @@ def get_building_data(latitude: float, longitude: float, radius_meters):
     except Exception as e:
         print(f"Error in get_building_data: {e}")
         return None
-    
+        
 @app.get("/data/buildings")
 async def get_buildings(latitude: float, longitude: float):
     """
@@ -134,5 +132,5 @@ async def get_buildings(latitude: float, longitude: float):
     return data
 
 # Mount static frontend AFTER defining API routes to avoid intercepting API methods
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")

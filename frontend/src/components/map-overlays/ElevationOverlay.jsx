@@ -3,6 +3,7 @@ import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
 import { Circle } from "react-leaflet";
 
 function ElevationOverlay({ selectedPos, heatPoints }) {
+  console.log("Selected pos==>", selectedPos, heatPoints)
   if (!heatPoints?.length) return null;
 
   return (

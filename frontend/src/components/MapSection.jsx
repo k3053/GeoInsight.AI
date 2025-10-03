@@ -14,7 +14,28 @@ import AQIOverlay from "./map-overlays/AQIOverlay";
 import BuildingOverlay from "./map-overlays/BuildingOverlay";
 import OSMBuildingsOverlay from "./map-overlays/OSMBuildingsOverlay";
 import WeatherOverlay from "./map-overlays/WeatherOverlay";
+import { FaUtensils, FaHospital, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
+import { renderToStaticMarkup } from "react-dom/server";
+import L from "leaflet";
 
+const categoryIcons = {
+  restaurant: <FaUtensils color="red" size={18} />,
+  // hospital: <FaHospital color="blue" size={18} />,
+  school: <FaSchool color="green" size={18} />,
+  college: <FaUniversity color="orange" size={18} />,
+  university: <FaUniversity color="orange" size={18} />,
+  park: <FaTree color="teal" size={18} />,
+};
+
+const getDivIcon = (category) => {
+  const iconComponent = categoryIcons[category] || <FaUtensils color="gray" size={18} />;
+  return L.divIcon({
+    html: renderToStaticMarkup(iconComponent),
+    className: "",   // remove default styles
+    iconSize: [20, 20],
+    popupAnchor: [0, -10],
+  });
+};
 
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -32,25 +53,6 @@ function ChangeMapView({ center, zoom }) {
   }, [center, zoom, map]);
   return null;
 }
-
-// Helper component to handle map view changes
-// const ChangeMapView = ({ center, zoom }) => {
-//   const map = useMap();
-//   map.flyTo(center, zoom);
-//   return null;
-// };
-
-// Helper component to handle map clicks
-// function MapClickHandler({ setSelectedPos, onLocationSelect}) {
-//   useMapEvents({
-//     click(e) {
-//       const { lat, lng } = e.latlng;
-//       setSelectedPos([lat, lng]);
-//       onLocationSelect(); // Notify parent that a location has been selected
-//     },
-//   });
-//   return null;
-// }
 
 const MapClickHandler = ({ onLocationSelect, setPosition }) => {
   useMapEvents({
@@ -78,36 +80,41 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
   const [filterData, setFilterData] = useState(null);
   const [heatPoints, setHeatPoints] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
 
-  // Search effect remains unchanged.
-  // useEffect(() => {
-  //   const performSearch = async () => {
-  //     if (!searchQuery) return;
-  //     setIsLoading(true);
-  //     try {
-  //       const response = await fetch(
-  //         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`
-  //       );
-  //       const data = await response.json();
-  //       if (data && data.length > 0) {
-  //         const { lat, lon } = data[0];
-  //         setSelectedPos([parseFloat(lat), parseFloat(lon)]);
-  //         onLocationSelect();
-  //       } else {
-  //         alert("Location not found.");
-  //       }
-  //     } catch (error) {
-  //       console.error("Search failed:", error);
-  //       alert("Failed to perform search.");
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
+    useEffect(() => {
+      if (!position) return;
+      const fetchNearbyPlaces = async () => {
+        try {
+          const [lat, lon] = position;
+          const radius = 5000; // 5 km
 
-  //   if (searchQuery && searchTrigger > 0) {
-  //     performSearch();
-  //   }
-  // }, [searchTrigger]);
+          const query = `
+            [out:json];
+            (
+              node["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
+              way["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
+              relation["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
+            );
+            out center;
+          `;
+
+          const response = await fetch("https://overpass-api.de/api/interpreter", {
+            method: "POST",
+            body: query,
+          });
+
+          const data = await response.json();
+          if (data && data.elements) {
+            setNearbyPlaces(data.elements);
+          }
+        } catch (error) {
+          console.error("Failed to fetch nearby places:", error);
+        }
+      };
+
+      fetchNearbyPlaces();
+    }, [position]);
 
     useEffect(() => {
     if (searchTrigger > 0 && searchQuery) {
@@ -247,16 +254,35 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
           Loading...
         </div>
       )}
-  <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%", zIndex: 0 }} whenCreated={map => { window.leafletMap = map; }}>
-        <ChangeMapView center={mapCenter} zoom={13} />
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-        <MapClickHandler onLocationSelect={onLocationSelect} setPosition={setPosition}/>
-        <Marker position={position}>
-          <Popup>
-            {searchQuery || `Lat: ${position[0].toFixed(4)}, Lng: ${position[1].toFixed(4)}`}
-          </Popup>
-        </Marker>
+      <MapContainer center={mapCenter} zoom={13} style={{ height: "100%", width: "100%", zIndex: 0 }} whenCreated={map => { window.leafletMap = map; }}>
+            <ChangeMapView center={mapCenter} zoom={13} />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+            <MapClickHandler onLocationSelect={onLocationSelect} setPosition={setPosition}/>
+            <Marker position={position}>
+              <Popup>
+                {searchQuery || `Lat: ${position[0].toFixed(4)}, Lng: ${position[1].toFixed(4)}`}
+              </Popup>
+            </Marker>
 
+        {nearbyPlaces.map((place, idx) => {
+          const category = place.tags?.amenity;
+          return (
+            <Marker
+              key={idx}
+              position={[
+                place.lat || place.center?.lat,
+                place.lon || place.center?.lon,
+              ]}
+              icon={getDivIcon(category)}
+            >
+              <Popup>
+                <strong>{place.tags?.name || "Unnamed Place"}</strong><br />
+                {category}
+              </Popup>
+            </Marker>
+          );
+        })}
+        
         {/* Modular overlays */}
         {selectedFilter === "Elevation" && (
           <ElevationOverlay selectedPos={position} heatPoints={filterData?.heatPoints} />
@@ -266,13 +292,16 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
         )}
         
         {selectedFilter === 'Number of Buildings' && 
-          <BuildingOverlay selectedPos={position} filterData={filterData} />
+          <BuildingOverlay selectedPos={position}/>
         }
         {selectedFilter === "Weather Forecast" && (
           <>
             <WeatherOverlay selectedPos={position} weatherData={filterData} />
           </>
         )}
+        {/* {selectedFilter === "3D Buildings" && (
+          <OSMBuildingsOverlay selectedPos={position} />
+        )} */}
       </MapContainer>
     </div>
   );

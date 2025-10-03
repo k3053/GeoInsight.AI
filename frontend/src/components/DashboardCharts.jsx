@@ -7,9 +7,11 @@ import AQICharts from "./charts/AQICharts";
 import BuildingCharts from "./charts/BuildingCharts";
 // import PopulationLegend from "./legends/PopulationLegend";
 import AQILegend from "./legends/AQILegend";
-import BuildingLegend from "./legends/BuildingLegend";
+import ElevationLegend from "./legends/ElevationLegend";
+import ElevationCharts from "./charts/ElevationCharts";
 import WeatherLegend from "./legends/WeatherLegend";
 import WeatherCharts from "./charts/WeatherCharts";
+import { FaUtensils, FaPlusCircle, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
 
 import { Info } from "lucide-react";
 
@@ -36,10 +38,22 @@ const DashboardCharts = () => {
 
   // Placeholder content for when no filter is selected
   const NoFilterSelected = () => (
-    <div className="flex flex-col items-center justify-center h-full text-center text-[var(--theme-text-secondary)]">
-        <Info size={48} className="mb-4"/>
-        <h3 className="font-semibold text-lg">Select a Filter</h3>
-        <p>First, pick a location on the map, then choose a data filter from the header to begin analysis.</p>
+    <div className="flex flex-col">
+      <div className="bottom-12 left-2 p-2 rounded text-sm z-10">
+        <strong>Map Markers:</strong>
+        <ul className="mt-1 space-y-1 flex flex-col">
+          <li className="flex items-center"><FaUtensils color="red" className="mr-1"/> Restaurant</li>
+          <li className="flex items-center"><FaPlusCircle color="darkred" className="mr-1"/> Hospital</li>
+          <li className="flex items-center"><FaSchool color="green" className="mr-1"/> School</li>
+          <li className="flex items-center"><FaUniversity color="orange" className="mr-1"/> College/University</li>
+          <li className="flex items-center"><FaTree color="teal" className="mr-1"/> Park</li>
+        </ul>
+      </div>
+      <div className="flex flex-col items-center justify-end h-full text-center text-[var(--theme-text-secondary)]">
+          <Info size={48} className="mb-4"/>
+          <h3 className="font-semibold text-lg">Select a Filter</h3>
+          <p>First, pick a location on the map, then choose a data filter from the header to begin analysis.</p>
+      </div>
     </div>
   );
 
@@ -53,25 +67,25 @@ const DashboardCharts = () => {
     }
 
     switch (selectedFilter) {
-      case "Elevation":
-        // Elevation data is under stats.totals.elevations
-        const elevations = stats?.totals?.elevations;
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-center text-[var(--theme-text-secondary)]">
-            <h3 className="font-semibold text-lg">Elevation Data</h3>
-            {elevations ? (
-              <ul className="mt-2">
-                {elevations.map((e, idx) => (
-                  <li key={idx}>
-                    Lat: {e.latitude}, Lng: {e.longitude}, Elevation: {e.elevation} m
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No elevation data available.</p>
-            )}
-          </div>
-        );
+      // case "Elevation":
+      //   // Elevation data is under stats.totals.elevations
+      //   const elevations = stats?.totals?.elevations;
+      //   return (
+      //     <div className="flex flex-col items-center justify-center h-full text-center text-[var(--theme-text-secondary)]">
+      //       <h3 className="font-semibold text-lg">Elevation Data</h3>
+      //       {elevations ? (
+      //         <ul className="mt-2">
+      //           {elevations.map((e, idx) => (
+      //             <li key={idx}>
+      //               Lat: {e.latitude}, Lng: {e.longitude}, Elevation: {e.elevation} m
+      //             </li>
+      //           ))}
+      //         </ul>
+      //       ) : (
+      //         <p>No elevation data available.</p>
+      //       )}
+      //     </div>
+      //   );
       case "Air Quality Index":
         return (
           <>
@@ -82,7 +96,7 @@ const DashboardCharts = () => {
       case "Number of Buildings":
          return (
           <>
-            <BuildingLegend />
+            {/* <BuildingLegend /> */}
             <BuildingCharts stats={stats} />
           </>
         );
@@ -93,13 +107,13 @@ const DashboardCharts = () => {
             <WeatherCharts weather={stats?.totals?.weather} />
           </>
         );
-        // case "Elevation":
-        //  return (
-        //   <>
-        //     <ElevationLegend weather={stats?.elevation} />
-        //     <ElevationCharts weather={stats?.elevation} />
-        //   </>
-        // );
+        case "Elevation":
+         return (
+          <>
+            <ElevationLegend stats={stats} />
+            <ElevationCharts stats={stats} />
+          </>
+        );
       default:
         return <NoFilterSelected />;
     }
