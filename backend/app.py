@@ -14,8 +14,8 @@ app = FastAPI(title="Location Intelligence", version="0.1")
 DIST_DIR = os.path.join("..", "frontend", "dist")
 ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
@@ -29,7 +29,7 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "test-session"
-    latitude: Optional[float] = None
+    latitude: Optional[float]= None
     longitude: Optional[float] = None
     # mcp_url: str = "http://localhost:8000/mcp"
 
@@ -80,6 +80,7 @@ async def chat_query(body: ChatRequest):
         logging.exception("/chat/query failed")
         raise HTTPException(status_code=500, detail=str(e))
     
+@app.get("/data/buildings")
 def get_building_data(latitude: float, longitude: float, radius_meters: int = 1000):
     api = overpy.Overpass()
     query = f"""

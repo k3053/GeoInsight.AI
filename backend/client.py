@@ -77,7 +77,8 @@ async def run_agent(message: str, session_id: str = "test-session", latitude: fl
     python_exe = sys.executable or "python"
     server_path = str(Path(__file__).parent / "server.py")
     server_params = StdioServerParameters(
-        command=[python_exe, server_path, "stdio"],
+        command=python_exe,
+        args=[server_path, "stdio"],
     )
 
     chat_history = create_chat_history(session_id)

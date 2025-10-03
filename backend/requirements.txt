@@ -14,3 +14,4 @@ astrapy
 langchain_astradb
 langchain_groq
 overpy
+langchain_astradb
