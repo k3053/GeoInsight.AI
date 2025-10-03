@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
-const LoginPage = ({ setView }) => {
+const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      navigate('/');
       // Auth state change will be handled by the listener in App.jsx
     } catch (err) {
       setError('Failed to log in. Please check your credentials.');
@@ -47,13 +50,13 @@ const LoginPage = ({ setView }) => {
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" className="w-full btn-primary">
+          <button type="submit" className="cursor-pointer w-full btn-primary" onClick={handleLogin}>
             Sign In
           </button>
         </form>
         <p className="text-center text-gray-400">
           Don't have an account?{' '}
-          <button onClick={() => setView('register')} className="text-[var(--theme-primary)] hover:underline">
+          <button onClick={() => navigate('/register')} className="cursor-pointer text-[var(--theme-primary)] hover:underline">
             Sign Up
           </button>
         </p>
