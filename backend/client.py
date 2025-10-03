@@ -107,7 +107,7 @@ async def run_agent(message: str, session_id: str = "test-session", latitude: fl
                 
                 return await agent.ainvoke(input_data, config=config)
 
-            agent_response = await asyncio.wait_for(_invoke(), timeout=60)
+            agent_response = await asyncio.wait_for(_invoke(), timeout=120)
 
             # Extract both text and location data
             processed_response = _extract_final_response(agent_response)
