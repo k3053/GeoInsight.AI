@@ -25,9 +25,11 @@
     "react-leaflet": "^5.0.0",
     "react-leaflet-heatmap-layer-v3": "^3.0.3-beta-1",
     "react-map-gl": "^6.1.21",
+    "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.3",
     "recharts": "^3.2.1",
+    "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.1.12"
   },
   "devDependencies": {

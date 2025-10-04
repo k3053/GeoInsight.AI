@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MdArrowUpward, MdChat } from "react-icons/md";
 import MapSection from "../components/MapSection";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
-const API_URL = "http://localhost:8000/chat/query";
+const API_URL = "http://localhost:8000/chat/query"; // Ensure backend runs on :8000
 
 const suggestedQuestions = [
   "What are the advantages of using Next.js?",
@@ -25,7 +27,8 @@ export default function Chatbot() {
 
    // ✅ extract coords + initial message
   const { initialMessage, coords } = location.state || {};
-  const mapCenter = coords || [20.5937, 78.9629]; // fallback to India if none
+  const initialCenter = coords || [20.5937, 78.9629]; // fallback to India if none
+  const [mapCenter, setMapCenter] = useState(initialCenter);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -54,15 +57,47 @@ export default function Chatbot() {
 		setIsLoading(true);
 
 		try {
+		// Normalize coordinates to latitude/longitude fields expected by backend
+		let latitude = undefined;
+		let longitude = undefined;
+		if (coords) {
+			if (Array.isArray(coords) && coords.length >= 2) {
+				latitude = coords[0];
+				longitude = coords[1];
+			} else if (typeof coords === "object") {
+				latitude = coords.lat ?? coords.latitude;
+				longitude = coords.lng ?? coords.lon ?? coords.longitude;
+			}
+		}
+
 		const response = await fetch(API_URL, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-			message: messageText,
-			session_id: "user-session-123", 
-			location: coords || null,   // ✅ send coords if available
+				message: messageText,
+				session_id: "user-session-123",
+				latitude,
+				longitude,
 			}),
 		});
+
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}`);
+		}
+
+		const data = await response.json();
+
+		// Render assistant reply
+		const agentText = data?.answer ?? "";
+		if (agentText) {
+			setMessages((prev) => [...prev, { role: "agent", text: agentText }]);
+		}
+
+		// Optionally re-center map if backend returns location
+		const loc = data?.location;
+		if (loc && typeof loc.latitude === "number" && typeof loc.longitude === "number") {
+			setMapCenter([loc.latitude, loc.longitude]);
+		}
 		} catch (error) {
 		console.error("Failed to fetch from chat API:", error);
 		const errorMessage = {
@@ -70,16 +105,15 @@ export default function Chatbot() {
 			text: "Sorry, I'm having trouble connecting. Please try again later.",
 		};
 		setMessages((prev) => [...prev, errorMessage]);
+		} finally {
+			setIsLoading(false);
 		}
 	}
   return (
     <div className="min-h-screen bg-[#111] text-white flex relative font-sans">
-      {/* Left 50% Map */}
+        {/* Left 50% Map */}
       <div className="w-1/2 h-screen">
-        {/* <MapContainer center={[20.5937, 78.9629]} zoom={5} className="w-full h-full">
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        </MapContainer> */}
-		<MapSection locationFromChat={mapCenter} />
+            <MapSection locationFromChat={mapCenter} />
       </div>
 
       {/* Right 50% Chat Interface */}
@@ -141,7 +175,28 @@ export default function Chatbot() {
                     : "bg-gray-700 text-white"
                 }`}
               >
-                {msg.text}
+                {msg.role === "user" ? (
+                  msg.text
+                ) : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({node, ...props}) => (
+                        <a {...props} target="_blank" rel="noopener noreferrer" className="underline text-[#64ffda]" />
+                      ),
+                      code: ({inline, className, children, ...props}) => (
+                        <code className={`${className || ""} bg-black/30 px-1 py-0.5 rounded`} {...props}>
+                          {children}
+                        </code>
+                      ),
+                      pre: ({children}) => (
+                        <pre className="bg-black/40 p-3 rounded overflow-x-auto">{children}</pre>
+                      )
+                    }}
+                  >
+                    {msg.text || ""}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           ))}
