@@ -12,9 +12,10 @@ import { useSelector } from "react-redux";
 import ElevationOverlay from "./map-overlays/ElevationOverlay";
 import AQIOverlay from "./map-overlays/AQIOverlay";
 import BuildingOverlay from "./map-overlays/BuildingOverlay";
-import OSMBuildingsOverlay from "./map-overlays/OSMBuildingsOverlay";
+import SolarOverlay from './map-overlays/SolarOverlay';
 import WeatherOverlay from "./map-overlays/WeatherOverlay";
-import { FaUtensils, FaHospital, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
+import { fetchNearbyPlaces, fetchFilterData } from './services/mapServices';
+import { FaUtensils, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 
@@ -28,7 +29,7 @@ const categoryIcons = {
 };
 
 const getDivIcon = (category) => {
-  const iconComponent = categoryIcons[category] || <FaUtensils color="gray" size={18} />;
+  const iconComponent = categoryIcons[category] || undefined;
   return L.divIcon({
     html: renderToStaticMarkup(iconComponent),
     className: "",   // remove default styles
@@ -60,17 +61,11 @@ const MapClickHandler = ({ onLocationSelect, setPosition }) => {
   console.log("Map clicked! Coordinates:", e.latlng);     
   const newPos = [e.latlng.lat, e.latlng.lng];
   setPosition(newPos);                                  // This still updates the marker's position.
-  onLocationSelect({  lat: e.latlng.lat, lng: e.latlng.lng}); // ✅ This now sends the exact coordinates to the parent.
+  onLocationSelect({  lat: e.latlng.lat, lng: e.latlng.lng}); // This now sends the exact coordinates to the parent.
 },
   });
   return null;
 };
-
-// The API keys from the .env file
-const VITE_API_WEATHER_KEY = import.meta.env.VITE_API_WEATHER_KEY;
-// const VITE_API_NINJAS_KEY = import.meta.env.VITE_API_NINJAS_KEY;
-const VITE_AQICN_TOKEN = import.meta.env.VITE_AQICN_TOKEN;
-const VITE_API_WEATHER_FORECAST = import.meta.env.VITE_API_WEATHER_FORECAST;
 
 const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFromChat }) => {
   // const [selectedPos, setSelectedPos] = useState([21.1702, 72.8311]); // Default: Surat
@@ -78,42 +73,23 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
   const [position, setPosition] = useState([21.1702, 72.8311]); 
   const [mapCenter, setMapCenter] = useState([21.1702, 72.8311]);
   const [filterData, setFilterData] = useState(null);
-  const [heatPoints, setHeatPoints] = useState([]);
+  // const [heatPoints, setHeatPoints] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
 
     useEffect(() => {
       if (!position) return;
-      const fetchNearbyPlaces = async () => {
+      const getNearbyPlaces = async () => {
         try {
           const [lat, lon] = position;
-          const radius = 5000; // 5 km
-
-          const query = `
-            [out:json];
-            (
-              node["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
-              way["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
-              relation["amenity"~"restaurant|school|college|university|park"](around:${radius},${lat},${lon});
-            );
-            out center;
-          `;
-
-          const response = await fetch("https://overpass-api.de/api/interpreter", {
-            method: "POST",
-            body: query,
-          });
-
-          const data = await response.json();
-          if (data && data.elements) {
-            setNearbyPlaces(data.elements);
-          }
+          const places = await fetchNearbyPlaces(lat, lon);
+          setNearbyPlaces(places);
         } catch (error) {
-          console.error("Failed to fetch nearby places:", error);
+          console.error('Error:', error);
         }
       };
 
-      fetchNearbyPlaces();
+      getNearbyPlaces();
     }, [position]);
 
     useEffect(() => {
@@ -128,7 +104,6 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
             setPosition(newPos);
             setMapCenter(newPos);
 
-            // ✅ RESTORED FUNCTIONALITY: Call the prop after a successful search
             onLocationSelect({ lat: newPos[0], lng: newPos[1] });
           }
         } catch (error) {
@@ -141,101 +116,25 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
 
   // Data fetching effect for selectedFilter and selectedPos.
   useEffect(() => {
-    if (!selectedFilter || !position) {
-      // setFilterData(null);
-      // setHeatPoints([]);
-      return;
-    }
+    if (!selectedFilter || !position) return;
 
-    const fetchData = async () => {
+    const getFilterData = async () => {
       setIsLoading(true);
-      const lat = position[0];
-      const lng = position[1];
-      let data = null;
       try {
-        switch (selectedFilter) {
-          // Inside your data fetching effect's switch-case for "Weather Forecast":
-          case "Weather Forecast": {
-            const lat = position[0];
-            const lon = position[1];
-            // Call the API Ninjas weather endpoint
-            const weatherResponse = await fetch(
-              `https://api.api-ninjas.com/v1/weather?lat=${lat}&lon=${lon}`,
-              { headers: { 'X-Api-Key': VITE_API_WEATHER_KEY } }
-            );
-            const weatherData1 = await weatherResponse.json();
-            console.log("Weather data from API Ninjas: ", weatherData1);
-
-            // Call the WeatherAPI.com forecast endpoint using the provided key
-            const weatherApiUrl = `http://api.weatherapi.com/v1/forecast.json?key=${VITE_API_WEATHER_FORECAST}&q=${lat},${lon}&days=1`;
-            const weatherApiResponse = await fetch(weatherApiUrl);
-            const weatherData2 = await weatherApiResponse.json();
-            // console.log("Weather data from WeatherAPI.com: ", weatherData2);
-
-            // Merge responses (WeatherAPI data may have forecast & history while API Ninjas gives current conditions)
-            const mergedWeatherData = { ...weatherData1, ...weatherData2 };
-            console.log("Weather data: ", mergedWeatherData);
-            data = { weather: mergedWeatherData };
-            break;
-          }
-          case "Elevation": {
-            // Example: fetch elevation for a few points around the selected position
-            const locations = [
-              `${lat},${lng}`,
-              `${lat+0.01},${lng+0.01}`,
-              `${lat-0.01},${lng-0.01}`
-            ].join('|');
-            const elevResponse = await fetch(
-              `https://api.open-elevation.com/api/v1/lookup?locations=${locations}`
-            );
-            const elevData = await elevResponse.json();
-            console.log("Elevation data===>>> \n", elevData);
-            // Prepare points for heatmap overlay
-            let heatPoints = [];
-            if (elevData.results) {
-              heatPoints = elevData.results.map(r => [r.latitude, r.longitude, r.elevation]);
-            }
-            data = { elevations: elevData.results, heatPoints };
-            break;
-          }
-          case "Air Quality Index": {
-            const aqiResponse = await fetch(
-              `https://api.waqi.info/feed/geo:${position[0]};${position[1]}/?token=${VITE_AQICN_TOKEN}`
-            );
-            const aqiData = await aqiResponse.json();
-            console.log("AQI data===>>> \n", aqiData);
-            if (aqiData.status === "ok") {
-              data = { aqi: aqiData };
-            }
-            break;
-          }
-          case "Number of Buildings": {
-              const lat = position[0];
-              const lng = position[1];
-              if (lat == null || lng == null) {
-                console.error("Missing coordinates for buildings API call");
-                break;
-              }
-              const buildingsResponse = await fetch(`http://127.0.0.1:8000/data/buildings?latitude=${lat}&longitude=${lng}`);
-              const buildingsData = await buildingsResponse.json();
-              console.log("Buildings data from local API ===>>> \n", buildingsData);
-              data = { totalBuildings: buildingsData.totalBuildings, points: buildingsData };
-              break;
-            }     
-          default:
-            break;
-        }
+        const data = await fetchFilterData(selectedFilter, position);
+        setFilterData(data);
+        // Dispatch event for dashboard
+        window.dispatchEvent(
+          new CustomEvent('mapStatsUpdated', { detail: { totals: data } })
+        );
       } catch (error) {
-        console.error("Failed to fetch filter data:", error);
-        alert(`Failed to fetch data for ${selectedFilter}.`);
+        console.error('Error fetching filter data:', error);
       } finally {
-        setFilterData(data || {});
-        window.dispatchEvent(new CustomEvent("mapStatsUpdated", { detail: { totals: data || {} } }));
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    getFilterData();
   }, [selectedFilter, position]);
 
   // EFFECT for Chat -> Map communication
@@ -264,7 +163,7 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
               </Popup>
             </Marker>
 
-        {nearbyPlaces.map((place, idx) => {
+        {nearbyPlaces?.map((place, idx) => {
           const category = place.tags?.amenity;
           return (
             <Marker
@@ -298,6 +197,9 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
           <>
             <WeatherOverlay selectedPos={position} weatherData={filterData} />
           </>
+        )}
+        {selectedFilter === "Solar" && (
+          <SolarOverlay selectedPos={position} solarData={filterData?.solar} />
         )}
         {/* {selectedFilter === "3D Buildings" && (
           <OSMBuildingsOverlay selectedPos={position} />

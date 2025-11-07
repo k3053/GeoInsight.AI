@@ -5,6 +5,7 @@ import os
 import requests
 import googlemaps
 import overpy
+from mongo_connect import save_to_mongodb
 
 load_dotenv()
 
@@ -48,11 +49,16 @@ def get_air_quality(latitude, longitude):
         }
     }
     
-
     try:
         response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Save to MongoDB
+        query_params = {"latitude": latitude, "longitude": longitude}
+        save_to_mongodb("air_quality", data, query_params)
+        
+        return data
     
     except Exception as e:
         print(f"Error: {e}")
@@ -155,7 +161,13 @@ def get_weather(latitude: float, longitude: float):
     try:
         response = requests.get(url, timeout=30)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Save to MongoDB
+        query_params = {"latitude": latitude, "longitude": longitude}
+        save_to_mongodb("weather", data, query_params)
+        
+        return data
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -192,7 +204,19 @@ def get_daily_forecast(
     try:
         resp = requests.get(url, params=params, timeout=30)
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        
+        # Save to MongoDB
+        query_params = {
+            "latitude": latitude, 
+            "longitude": longitude,
+            "days": days,
+            "page_size": page_size,
+            "page_token": page_token
+        }
+        save_to_mongodb("daily_forecast", data, query_params)
+        
+        return data
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -255,12 +279,16 @@ def search_places(query: str):
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Save to MongoDB
+        query_params = {"query": query}
+        save_to_mongodb("places_search", data, query_params)
+        
+        return data
     except Exception as e:
         print(f"Error: {e}")
         return None
-
-
 
 @mcp.tool()
 def search_nearby_places(latitude, longitude, radius=1000, place_type="restaurant", max_results=10):
@@ -290,7 +318,19 @@ def search_nearby_places(latitude, longitude, radius=1000, place_type="restauran
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=30)
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        
+        # Save to MongoDB
+        query_params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "radius": radius,
+            "place_type": place_type,
+            "max_results": max_results
+        }
+        save_to_mongodb("nearby_places", data, query_params)
+        
+        return data
     except Exception as e:
         print(f"Error: {e}")
         return None
@@ -406,13 +446,23 @@ def count_nearby_buildings(latitude: float, longitude: float, radius_meters: int
                 "coords": center_node
             })
             
-        return {
-            "totalBuildings": total_buildings,
-            "buildingTypes": building_types,
-            "points": building_details, # Renamed to 'points' for consistency with your frontend
-            "location": {"lat": latitude, "lon": longitude},
-            "radius": radius_meters
-        }
+            data = {
+                "totalBuildings": total_buildings,
+                "buildingTypes": building_types,
+                "points": building_details,
+                "location": {"lat": latitude, "lon": longitude},
+                "radius": radius_meters
+            }
+            
+            # Save to MongoDB
+            query_params = {
+                "latitude": latitude,
+                "longitude": longitude,
+                "radius_meters": radius_meters
+            }
+            save_to_mongodb("buildings", data, query_params)
+            
+            return data
     
     except Exception as e:
         print(f"Error in count_nearby_buildings: {e}")

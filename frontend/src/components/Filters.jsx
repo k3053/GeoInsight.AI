@@ -1,16 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setFilter } from '../store/dashboardSlice';
 import {
   FaWind,
-  FaMountain,
-  FaLeaf,
+  FaCloudSun,
   FaBuilding,
+  FaMountain,
   FaSun,
-  FaImage,
+  FaLeaf,
+  FaCloudRain,
+  FaUsers,
+  FaTree,
   FaMapMarkedAlt,
+  FaDrawPolygon,
   FaRoad,
-  FaEllipsisV
+  FaExclamationTriangle,
+  FaCity,
+  FaTint,
+  FaShieldAlt,
+  FaDollarSign,
+  FaStore,
+  FaChartLine,
+  FaLandmark,
+  FaEllipsisV 
 } from 'react-icons/fa';
 
 const Filters = ({ locationSelected }) => {
@@ -25,22 +37,47 @@ const Filters = ({ locationSelected }) => {
     "Weather Forecast",
     "Number of Buildings",
     "Elevation",
+    //remaining filters 
     "Solar",
-    "Imagery Insights",
-    "Places Insights",
-    "Roads Management Insights"
+    "Vegetation Index(NDVI)",
+    "Precipitation Levels",
+    "Temporal Population Density",
+    "Temporal Green Cover Analysis",
+    "Land Use/Land Cover",
+    "Building Segmentation",
+    "Public Infrastructure",
+    "Disaster Volunerability",
+    "Urban Sprawl Analysis",
+    "Water Quality Index",
+    "Crime Rate/Safety Index",
+    "Property Value Trends",
+    "Distance to Nearest Amenities",
+    "Property Development Potential",
+    "Land Price"
   ];
 
   // Map filter names to icons
   const icons = {
     "Air Quality Index": <FaWind />,
-    "Weather Forecast": <FaLeaf />,
+    "Weather Forecast": <FaCloudSun />,
     "Number of Buildings": <FaBuilding />,
     "Elevation": <FaMountain />,
     "Solar": <FaSun />,
-    "Imagery Insights": <FaImage />,
-    "Places Insights": <FaMapMarkedAlt />,
-    "Roads Management Insights": <FaRoad />
+    "Vegetation Index(NDVI)": <FaLeaf />,
+    "Precipitation Levels": <FaCloudRain />,
+    "Temporal Population Density": <FaUsers />,
+    "Temporal Green Cover Analysis": <FaTree />,
+    "Land Use/Land Cover": <FaMapMarkedAlt />,
+    "Building Segmentation": <FaDrawPolygon />,
+    "Public Infrastructure": <FaRoad />,
+    "Disaster Volunerability": <FaExclamationTriangle />,
+    "Urban Sprawl Analysis": <FaCity />,
+    "Water Quality Index": <FaTint />,
+    "Crime Rate/Safety Index": <FaShieldAlt />,
+    "Property Value Trends": <FaDollarSign />,
+    "Distance to Nearest Amenities": <FaStore />,
+    "Property Development Potential": <FaChartLine />,
+    "Land Price": <FaLandmark />
   };
 
   const handleClick = (filter) => {

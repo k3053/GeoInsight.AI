@@ -11,6 +11,8 @@ import ElevationLegend from "./legends/ElevationLegend";
 import ElevationCharts from "./charts/ElevationCharts";
 import WeatherLegend from "./legends/WeatherLegend";
 import WeatherCharts from "./charts/WeatherCharts";
+import SolarCharts from "./charts/SolarCharts";
+import SolarLegend from "./legends/SolarLegend";
 import { FaUtensils, FaPlusCircle, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
 
 import { Info } from "lucide-react";
@@ -112,6 +114,13 @@ const DashboardCharts = () => {
           <>
             <ElevationLegend stats={stats} />
             <ElevationCharts stats={stats} />
+          </>
+        );
+        case "Solar":
+        return (
+          <>
+            <SolarLegend solar={stats?.totals?.solar} />
+            <SolarCharts stats={stats} />
           </>
         );
       default:
