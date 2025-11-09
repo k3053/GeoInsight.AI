@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from prompt_library import REACT_AGENT_PROMPT
+# from prompt_library import REACT_AGENT_PROMPT
 from chat_history import create_chat_history
 import json
 from langgraph.checkpoint.memory import InMemorySaver
@@ -19,8 +19,8 @@ from langchain_groq import ChatGroq
 
 load_dotenv()
 
-# model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-model = ChatGroq(model="openai/gpt-oss-120b")
+model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+# model = ChatGroq(model="openai/gpt-oss-120b")
 
 checkpointer = InMemorySaver()
 
@@ -91,7 +91,7 @@ async def run_agent(message: str, session_id: str = "test-session", latitude: fl
             agent = create_react_agent(
                 model,
                 tools,
-                prompt=REACT_AGENT_PROMPT,
+                # prompt=REACT_AGENT_PROMPT,
                 checkpointer=checkpointer
             )
 

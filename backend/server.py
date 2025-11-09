@@ -6,8 +6,16 @@ import requests
 import googlemaps
 import overpy
 from mongo_connect import save_to_mongodb
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()  # only terminal
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 GOOGLEMAPS_API_KEY = os.getenv("GOOGLEMAPS_API_KEY")
 gmaps = googlemaps.Client(key=GOOGLEMAPS_API_KEY)
@@ -15,14 +23,13 @@ gmaps = googlemaps.Client(key=GOOGLEMAPS_API_KEY)
 mcp = FastMCP("Demo")
 
 @mcp.tool()
-def add_numbers(num1: int, num2: int) -> int:
-    """Adds two numbers"""
+def add(num1: int, num2: int):
     return num1 + num2
-
 
 @mcp.tool()
 def web_search(query: str):
     """This tool does the web search using the users query"""
+    logger.info("CALLING TOOL: WEB SEARCH")
     search = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
     response = search.run(query)
     return response
