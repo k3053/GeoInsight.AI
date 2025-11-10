@@ -1,15 +1,16 @@
+// HomePage.jsx
 import React, { useState } from 'react';
 import Header from "../components/Header";
 import MapSection from "../components/MapSection";
 import DashboardCharts from "../components/DashboardCharts";
 import ChatSection from "../components/ChatSection";
 
-const HomePage = ({ handleLogout }) => {
+// 💡 Receive userRole as a prop
+const HomePage = ({ handleLogout, userRole }) => { 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchTrigger, setSearchTrigger] = useState(0);
   const [locationSelected, setLocationSelected] = useState(false);
   
-
   // State for coordinates selected on the map (Map -> Chat)
   const [selectedCoords, setSelectedCoords] = useState(null);
   
@@ -25,13 +26,14 @@ const HomePage = ({ handleLogout }) => {
   return (
     // Main container with padding
     <div className="flex flex-col h-screen overflow-hidden p-4 bg-[var(--theme-bg)] gap-4">
-      {/* Header now sits outside the main grid */}
+      {/* Header now sits outside the main grid, passing userRole */}
       <Header 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearch={handleSearch}
         locationSelected={locationSelected}
         handleLogout={handleLogout} 
+        userRole={userRole} // 💡 PASS THE ROLE HERE
       />
       
       {/* Main content grid takes the remaining space */}
@@ -41,12 +43,10 @@ const HomePage = ({ handleLogout }) => {
           <MapSection 
             searchQuery={searchQuery}
             searchTrigger={searchTrigger}
-            // onLocationSelect={() => setLocationSelected(true)}
             onLocationSelect={(coords) => {
               setSelectedCoords(coords);
               setLocationSelected(true);
             }}
-            // Pass the location from chat to update the map view
             locationFromChat={locationFromChat}
           />
         </div>
@@ -54,9 +54,7 @@ const HomePage = ({ handleLogout }) => {
         {/* Box 3: Chat (Bottom-Left on Desktop) */}
         <div className="h-[40%] lg:h-auto lg:col-start-1 lg:row-start-2 card-floating overflow-hidden">
            <ChatSection 
-           // Pass the selected coordinates for chat context
              selectedCoords={selectedCoords}
-             // Pass the setter to update map when chat finds a location
              onLocationFound={setLocationFromChat}
              />
         </div>
@@ -71,4 +69,3 @@ const HomePage = ({ handleLogout }) => {
 };
 
 export default HomePage;
-

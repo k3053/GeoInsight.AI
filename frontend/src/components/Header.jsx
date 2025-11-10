@@ -1,3 +1,4 @@
+// Header.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from "lucide-react";
@@ -6,7 +7,8 @@ import { LogOut } from 'lucide-react';
 import { MdMoreVert } from 'react-icons/md';
 import { auth } from '../firebaseConfig';
 
-const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handleLogout }) => {
+// 💡 Accept userRole as a prop
+const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handleLogout, userRole }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const navigate = useNavigate();
@@ -172,37 +174,10 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
       
       {/* Right: Filters + More Filters */}
       <div className="w-full lg:w-auto lg:flex-1 flex items-center justify-center lg:justify-end gap-4 relative">
-        <Filters locationSelected={locationSelected} />
-        {/* More filters icon */}
-        {/* <button
-          className="ml-2 p-2 rounded hover:bg-black focus:outline-none"
-          onClick={() => setMoreFiltersOpen(v => !v)}
-          aria-label="More filters"
-        >
-          <MdMoreVert size={24} />
-        </button> */}
-        {/* More filters dropdown */}
-        {moreFiltersOpen && (
-          <div className="absolute right-0 top-16 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-lg min-w-[160px] flex flex-col">
-            <ul className="py-2">
-              <li>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Elevation</button>
-              </li>
-              <li>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Solar</button>
-              </li>
-              <li>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Imagery Insights</button>
-              </li>
-              <li>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Places Insights</button>
-              </li>
-              <li>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-700">Roads Management Insights</button>
-              </li>
-            </ul>
-          </div>
-        )}
+        {/* 💡 Pass userRole to the Filters component */}
+        <Filters locationSelected={locationSelected} userRole={userRole} />
+        {/* <button ...> */}
+        {/* ... (More filters dropdown) */}
       </div>
     </header>
   );
