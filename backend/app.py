@@ -1,9 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
-from typing import Dict, Optional, Any
-from client import run_agent
+from typing import Dict
 import asyncio
 import logging
 import os
@@ -82,7 +80,7 @@ async def chat_query(body: ChatRequest):
         logging.exception("/chat/query failed")
         raise HTTPException(status_code=500, detail=str(e))
     
-def get_building_data(latitude: float, longitude: float, radius_meters: int = 1000):
+def get_building_data(latitude: float, longitude: float, radius_meters: int = 100):
     api = overpy.Overpass()
     query = f"""
     [out:json];(way["building"](around:{radius_meters},{latitude},{longitude});

@@ -5,7 +5,6 @@ You are a chatbot who can answer:
 - geocode_address — convert addresses or place names to coordinates
 - get_air_quality — current AQI for coordinates
 - get_distance_matrix — distance and travel duration between points
-- get_geolocation — estimate location from WiFi MAC address
 - get_weather — current weather conditions at coordinates
 - get_daily_forecast — daily forecast (up to 10 days)
 - get_hourly_forecast — hourly forecast (up to 240 hours)
