@@ -2,7 +2,6 @@ import re
 import json
 from typing import Dict, Any, List, Tuple, Optional
 
-# ...existing code...
 NUMBER_RE = re.compile(r"([-+]?\d{1,3}(?:[,\d{3}]*)(?:\.\d+)?)(?:\s*(kW|kWh|kwh|W|%|\$|USD|years|yrs|m²|sqm|mm|cm)?)", re.IGNORECASE)
 DATE_VALUE_RE = re.compile(r"(\d{4}-\d{2}-\d{2})[:\s-]+([-+]?\d+(?:\.\d+)?)\s*(kWh|kW|%|W|mm)?", re.IGNORECASE)
 

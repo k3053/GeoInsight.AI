@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 
-// Import modular chart and legend components
-// import PopulationCharts from "./charts/PopulationCharts";
+// Import chart and legend components
 import AQICharts from "./charts/AQICharts";
 import BuildingCharts from "./charts/BuildingCharts";
-// import PopulationLegend from "./legends/PopulationLegend";
-import AQILegend from "./legends/AQILegend";
-import ElevationLegend from "./legends/ElevationLegend";
 import ElevationCharts from "./charts/ElevationCharts";
-import WeatherLegend from "./legends/WeatherLegend";
 import WeatherCharts from "./charts/WeatherCharts";
 import SolarCharts from "./charts/SolarCharts";
+import NDVICharts from "./charts/NDVICharts";
+import PrecipitationCharts from "./charts/PrecipitationCharts";
+import PopulationCharts from "./charts/PopulationCharts";
+import GreenCoverCharts from "./charts/GreenCoverCharts";
+
+// Import legends
+import AQILegend from "./legends/AQILegend";
+import BuildingLegend from "./legends/BuildingLegend";
+import ElevationLegend from "./legends/ElevationLegend";
+import WeatherLegend from "./legends/WeatherLegend";
 import SolarLegend from "./legends/SolarLegend";
+import NDVILegend from "./legends/NDVILegend";
+import PrecipitationLegend from "./legends/PrecipitationLegend";
+import PopulationLegend from "./legends/PopulationLegend";
+import GreenCoverLegend from "./legends/GreenCoverLegend";
+
+// Import generic components for other filters
+import GenericChart from "./charts/GenericCharts";
+import GenericLegend from "./legends/GenericLegend";
+
 import { FaUtensils, FaPlusCircle, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
 
 import { Info } from "lucide-react";
@@ -98,7 +112,7 @@ const DashboardCharts = () => {
       case "Number of Buildings":
          return (
           <>
-            {/* <BuildingLegend /> */}
+            <BuildingLegend />
             <BuildingCharts stats={stats} />
           </>
         );
@@ -123,9 +137,61 @@ const DashboardCharts = () => {
             <SolarCharts stats={stats} />
           </>
         );
-      default:
-        return <NoFilterSelected />;
-    }
+        case "Vegetation Index(NDVI)":
+          return (
+            <>
+              <NDVILegend ndvi={stats?.totals?.ndvi} />
+              <NDVICharts stats={stats} />
+            </>
+          );
+        case "Precipitation Levels":
+          return (
+            <>
+              <PrecipitationLegend precipitation={stats?.totals?.precipitation} />
+              <PrecipitationCharts stats={stats} />
+            </>
+          );
+        case "Temporal Population Density":
+          return (
+            <>
+              <PopulationLegend population={stats?.totals?.population} />
+              <PopulationCharts stats={stats} />
+            </>
+          );
+        case "Temporal Green Cover Analysis":
+          return (
+            <>
+              <GreenCoverLegend green={stats?.totals?.green_cover} />
+              <GreenCoverCharts stats={stats} />
+            </>
+          );
+        // Generic components for remaining filters
+        case "Land Use/Land Cover":
+        case "Building Segmentation":
+        case "Public Infrastructure":
+        case "Disaster Volunerability":
+        case "Urban Sprawl Analysis":
+        case "Water Quality Index":
+        case "Crime Rate/Safety Index":
+        case "Property Value Trends":
+        case "Distance to Nearest Amenities":
+        case "Property Development Potential":
+        case "Land Price":
+          return (
+            <>
+              <GenericLegend 
+                data={stats?.totals?.[selectedFilter.toLowerCase().replace(/\s+/g, '_')] || stats} 
+                title={selectedFilter} 
+              />
+              <GenericChart 
+                data={stats?.totals?.[selectedFilter.toLowerCase().replace(/\s+/g, '_')] || stats} 
+                filterName={selectedFilter}
+              />
+            </>
+          );
+        default:
+          return <NoFilterSelected />;
+      }
   };
 
   return (

@@ -256,7 +256,6 @@ def fetch_from_mongodb(collection, filter_query=None, limit=1):
     print(f"[MOCK-DB] Fetching from {collection} with query: {filter_query}")
     return []  # simulate empty DB
 
-
 async def run_agent(prompt, session_id, latitude, longitude):
     """Mock chatbot/LLM agent response."""
     print(f"[MOCK-AGENT] Running agent for: {prompt}")
@@ -264,7 +263,6 @@ async def run_agent(prompt, session_id, latitude, longitude):
         "text": f"Generated insights for '{prompt}'",
         "location": {"lat": latitude, "lon": longitude},
     }
-
 
 def parse_agent_response(text, filter_name):
     """Simplified parser to extract key insight text."""

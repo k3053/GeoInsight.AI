@@ -14,6 +14,11 @@ import AQIOverlay from "./map-overlays/AQIOverlay";
 import BuildingOverlay from "./map-overlays/BuildingOverlay";
 import SolarOverlay from './map-overlays/SolarOverlay';
 import WeatherOverlay from "./map-overlays/WeatherOverlay";
+import NDVIOverlay from './map-overlays/NDVIOverlay';
+import PrecipitationOverlay from './map-overlays/PrecipitationOverlay';
+import PopulationOverlay from './map-overlays/PopulationOverlay';
+import GreenCoverOverlay from './map-overlays/GreenCoverOverlay';
+import GenericOverlay from './map-overlays/GenericOverlay';
 import { fetchNearbyPlaces, fetchFilterData } from './services/mapServices';
 import { FaUtensils, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -200,6 +205,37 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
         )}
         {selectedFilter === "Solar" && (
           <SolarOverlay selectedPos={position} solarData={filterData?.solar} />
+        )}
+        {selectedFilter === "Vegetation Index(NDVI)" && (
+          <NDVIOverlay selectedPos={position} ndviData={filterData?.totals?.ndvi || filterData} />
+        )}
+        {selectedFilter === "Precipitation Levels" && (
+          <PrecipitationOverlay selectedPos={position} precipitation={filterData?.totals?.precipitation || filterData} />
+        )}
+        {selectedFilter === "Temporal Population Density" && (
+          <PopulationOverlay selectedPos={position} population={filterData?.totals?.population || filterData} />
+        )}
+        {selectedFilter === "Temporal Green Cover Analysis" && (
+          <GreenCoverOverlay selectedPos={position} green={filterData?.totals?.green_cover || filterData} />
+        )}
+
+        {/* Generic overlay for remaining filters */}
+        {["Land Use/Land Cover", 
+          "Building Segmentation",
+          "Public Infrastructure",
+          "Disaster Volunerability", 
+          "Urban Sprawl Analysis",
+          "Water Quality Index",
+          "Crime Rate/Safety Index",
+          "Property Value Trends",
+          "Distance to Nearest Amenities",
+          "Property Development Potential",
+          "Land Price"].includes(selectedFilter) && (
+          <GenericOverlay 
+            selectedPos={position}
+            data={filterData}
+            filterName={selectedFilter}
+          />
         )}
         {/* {selectedFilter === "3D Buildings" && (
           <OSMBuildingsOverlay selectedPos={position} />
