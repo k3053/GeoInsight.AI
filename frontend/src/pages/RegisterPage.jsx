@@ -1,11 +1,22 @@
+// RegisterPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+// 💡 Import Firestore functions and 'db' instance
+import { doc, setDoc } from 'firebase/firestore'; 
+import { auth, db } from '../firebaseConfig';
+
+const ROLES = [
+  'Citizen',
+  'Researcher',
+  'Urban Planner',
+  'Real Estate',
+];
 
 const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState(ROLES[0]); // Default role
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -17,9 +28,18 @@ const RegisterPage = () => {
       return;
     }
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      navigate('/login');
-      // Auth state change will handle navigation
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 💡 Save the selected role to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        role: role, // Save the selected role
+        createdAt: new Date(),
+      });
+      
+      navigate('/'); // Navigate to home, App.jsx handles the rest
     } catch (err) {
       setError('Failed to create an account. The email may already be in use.');
       console.error(err);
@@ -53,8 +73,24 @@ const RegisterPage = () => {
               required
             />
           </div>
+          {/* 💡 Role Selection Dropdown */}
+          <div>
+            <label className="text-sm font-bold text-gray-400 block">Select Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full p-2 mt-1 text-white bg-[var(--theme-surface)] rounded-md border border-[var(--theme-border)] focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
+              required
+            >
+              {ROLES.map((r) => (
+                <option key={r} value={r} className='bg-[var(--theme-surface)]'>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button type="submit" className="w-full btn-primary cursor-pointer" onClick={handleRegister}>
+          <button type="submit" className="w-full btn-primary cursor-pointer">
             Sign Up
           </button>
         </form>
