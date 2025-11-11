@@ -3,16 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from typing import Dict, Optional, Any
-import time
 from client import run_agent
 import asyncio
 import logging
-import random
 import os
 import overpy
 from mongo_connect import save_to_mongodb, fetch_from_mongodb
 from fastapi import Query
 from client import run_agent
+from schemas import ChatRequest
 
 app = FastAPI(title="Location Intelligence", version="0.1")
 
@@ -28,13 +27,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class ChatRequest(BaseModel):
-    message: str
-    session_id: str = "test-session"
-    latitude: Optional[float]= None
-    longitude: Optional[float] = None
-    # mcp_url: str = "http://localhost:8000/mcp"
 
 @app.get("/")
 def read_root():
@@ -64,6 +56,23 @@ async def chat_query(body: ChatRequest):
             "answer": result.get("text") or "Sorry, I could not process your request.",
             "location": result.get("location")
         }
+
+        # Persist response to MongoDB
+        try:
+            save_to_mongodb(
+                "chat_responses",
+                response_data,
+                {
+                    "message": body.message,
+                    "session_id": body.session_id,
+                    "latitude": body.latitude,
+                    "longitude": body.longitude,
+                },
+            )
+        except Exception as e:
+            logging.warning(f"Failed to save chat response to MongoDB: {e}")
+
+        print(response_data)
         
         return response_data
 
@@ -124,7 +133,24 @@ async def get_buildings(latitude: float, longitude: float):
     data = get_building_data(latitude=latitude, longitude=longitude, radius_meters=1000)
     if data is None:
         raise HTTPException(status_code=500, detail="Failed to fetch data from Overpass API")
+    # Persist building data to MongoDB
+    try:
+        save_to_mongodb(
+            "buildings",
+            data,
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+                "radius_meters": 1000,
+            },
+        )
+    except Exception as e:
+        logging.warning(f"Failed to save buildings data to MongoDB: {e}")
     return data
+
+@app.post("/filters/aqi")
+def get_aqi():
+    pass
 
 
 # Mount static frontend AFTER defining API routes to avoid intercepting API methods

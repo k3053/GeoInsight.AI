@@ -32,6 +32,7 @@ def web_search(query: str):
     logger.info("CALLING TOOL: WEB SEARCH")
     search = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
     response = search.run(query)
+    print("WEB SEARCH TOOL CALLED")
     return response
 
 @mcp.tool()
@@ -39,6 +40,10 @@ def geocode_address(address: str):
     """Convert address, places names, malls, schools, colleges, shops, restaurants and all such places to coordinates"""
     try:
         result = gmaps.geocode(address)
+        
+        print("GEOCODE TOOL CALLED")
+        
+
         return result
     except Exception as e:
         print(f"Error: {e}")
@@ -61,6 +66,9 @@ def get_air_quality(latitude, longitude):
         response.raise_for_status()
         data = response.json()
         
+        print("AIR QUALITY TOOL CALLED")
+
+
         # Save to MongoDB
         query_params = {"latitude": latitude, "longitude": longitude}
         save_to_mongodb("air_quality", data, query_params)

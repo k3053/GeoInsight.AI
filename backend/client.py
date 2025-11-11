@@ -5,13 +5,12 @@ from mcp.client.streamable_http import streamablehttp_client
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.checkpoint.memory import InMemorySaver
 import asyncio
 import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-# from prompt_library import REACT_AGENT_PROMPT
+from prompt_library import REACT_AGENT_PROMPT
 from chat_history import create_chat_history
 import json
 from langgraph.checkpoint.memory import InMemorySaver
@@ -91,7 +90,7 @@ async def run_agent(message: str, session_id: str = "test-session", latitude: fl
             agent = create_react_agent(
                 model,
                 tools,
-                # prompt=REACT_AGENT_PROMPT,
+                prompt=REACT_AGENT_PROMPT,
                 checkpointer=checkpointer
             )
 

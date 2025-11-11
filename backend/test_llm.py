@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 # model = ChatGroq(model="openai/gpt-oss-120b")
 
