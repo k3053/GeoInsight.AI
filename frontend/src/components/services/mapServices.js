@@ -186,7 +186,7 @@ export const fetchFilterData = async (filter, position) => {
 
         // Construct POST body as per FastAPI ChatRequest model
         const body = {
-            session_id: "web-session",
+            session_id: localStorage.getItem('user_session') || "anonymous_session",
             message: "Surat", // fallback message (city name)
             latitude: lat,
             longitude: lng

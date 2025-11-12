@@ -27,6 +27,8 @@ const LoginPage = () => {
       // Role exists, proceed
       return;
     }
+    
+    localStorage.setItem('user_session', user.uid);
 
     // 2. If it's a new user (Google login first time), create the document
     // Default role for a Google sign-up can be 'Citizen' or you could prompt them on first login

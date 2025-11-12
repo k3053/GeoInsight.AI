@@ -211,13 +211,69 @@ def parse_ndvi(text: str) -> Dict[str, Any]:
         out["green_percent"] = _to_number(m2.group(1))
     return out
 
-# ...existing code...
+def extract_labeled_numbers(text: str) -> List[Dict[str, Any]]:
+    """
+    Extract numeric values along with possible descriptive labels (context words nearby).
+    Example:
+        "≈ 21.16 N, 72.84 E"  -> latitude=21.16, longitude=72.84
+        "10 m resolution"     -> resolution_m=10
+        "2020 / 2021"         -> years=[2020, 2021]
+    """
+    results = []
+    # Normalize spaces and remove markdown
+    text = re.sub(r"[ ]", " ", text)  # replace non-breaking spaces
+
+    # Latitude / Longitude special handling
+    coord_match = re.search(r"([0-9]+\.[0-9]+)\s*[°]?\s*[Nn]\s*[,/ ]+\s*([0-9]+\.[0-9]+)\s*[°]?\s*[Ee]", text)
+    if coord_match:
+        results.append({"key": "latitude", "value": float(coord_match.group(1)), "unit": "°N"})
+        results.append({"key": "longitude", "value": float(coord_match.group(2)), "unit": "°E"})
+
+    # Year ranges like 2020 / 2021
+    year_matches = re.findall(r"\b(20[0-9]{2})\b", text)
+    if year_matches:
+        results.append({"key": "years", "value": [int(y) for y in sorted(set(year_matches))], "unit": "year"})
+
+    # Resolution like "10 m" or "100 m"
+    res_match = re.search(r"(\d+(?:\.\d+)?)\s*m(?:etre|eter|)\b", text, re.IGNORECASE)
+    if res_match:
+        results.append({"key": "resolution_m", "value": float(res_match.group(1)), "unit": "m"})
+
+    # Other labeled numeric patterns: "<label>: <number><unit>"
+    labeled_re = re.compile(
+        r"([A-Za-z][A-Za-z\s\-/]{2,40})[:\s]+([-+]?\d+(?:\.\d+)?)(?:\s*(kW|kWh|m|mm|cm|%|USD|\$)?)",
+        re.IGNORECASE
+    )
+    for m in labeled_re.finditer(text):
+        key = re.sub(r"[^A-Za-z0-9]+", "_", m.group(1).strip().lower())
+        val = _to_number(m.group(2))
+        unit = (m.group(3) or "").strip()
+        results.append({"key": key, "value": val, "unit": unit})
+
+    # Fallback: all raw numeric values (optional)
+    try:
+        # try to extract JSON first
+        basic_nums = extract_numbers_with_units(text)
+    except ValueError:
+        # fallback to regex-based numeric extraction
+        basic_nums = extract_labeled_numbers(text)
+    seen = {(r['value'], r.get('unit')) for r in results}
+    for n in basic_nums:
+        if (n['value'], n.get('unit')) not in seen:
+            results.append({"key": None, **n})
+    return results
+
 def parse_solar(text: str) -> Dict[str, Any]:
     """
     Heuristic extractor for solar-specific metrics commonly returned by agents:
     - panel count, system size (kW), yearly energy (kWh), payback years, annual savings
     """
-    nums = extract_numbers_with_units(text)
+    try:
+        # try to extract JSON first
+        nums = extract_numbers_with_units(text)
+    except ValueError:
+        # fallback to regex-based numeric extraction
+        nums = extract_labeled_numbers(text)
     insights = {}
     lc = text.lower()
 
@@ -284,14 +340,19 @@ def parse_agent_response(text: str, filter_name: str = None) -> Dict[str, Any]:
                 parsed_from_json = j
                 break
 
-    numeric_values = extract_numbers_with_units(clean_text)
+    try:
+        # try to extract JSON first
+        numeric_insight = extract_numbers_with_units(clean_text)
+    except ValueError:
+        # fallback to regex-based numeric extraction
+        numeric_insight = extract_labeled_numbers(clean_text)
+
     time_series = extract_time_series(clean_text)
 
     result: Dict[str, Any] = {
         "clean_text": clean_text,
-        "extracted_json": extracted_json,
         "extracted_urls": extracted_urls,
-        "numeric_values": numeric_values,
+        "numeric_insights": numeric_insight,
         "time_series": time_series,
         "breakdowns": [],
         "filter_specific": {}
@@ -314,7 +375,8 @@ def parse_agent_response(text: str, filter_name: str = None) -> Dict[str, Any]:
             result["filter_specific"] = parse_crime_rate(clean_text)
         elif "ndvi" in fn or "vegetation" in fn:
             result["filter_specific"] = parse_ndvi(clean_text)
-        # add additional filter-specific parsers here as needed
+        else:
+            result["filter_specific"] = {}
 
     # best-effort breakdown extraction (simple category: value pairs)
     cat_re = re.compile(r"([A-Za-z &\/\-]{3,50})[:\s]+([\d,]+(?:\.\d+)?)", re.IGNORECASE)

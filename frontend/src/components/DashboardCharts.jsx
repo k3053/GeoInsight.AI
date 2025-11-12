@@ -38,7 +38,7 @@ const DashboardCharts = () => {
   // Listen for map stats events from MapSection
   useEffect(() => {
     const handler = (e) => setStats(e.detail);
-    console.log("In Dashboard Charts==> ", stats?.totals?.weather);
+    console.log("In Dashboard Charts==> ", stats);
     window.addEventListener("mapStatsUpdated", handler);
     return () => window.removeEventListener("mapStatsUpdated", handler);
   }, []);
@@ -140,7 +140,7 @@ const DashboardCharts = () => {
         case "Vegetation Index(NDVI)":
           return (
             <>
-              <NDVILegend ndvi={stats?.totals?.ndvi} />
+              <NDVILegend ndvi={stats?.totals?.insights} />
               <NDVICharts stats={stats} />
             </>
           );

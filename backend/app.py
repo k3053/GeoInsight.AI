@@ -14,6 +14,7 @@ from mongo_connect import save_to_mongodb, fetch_from_mongodb
 from parse_response import parse_agent_response
 from data_scraper import scrape_filter_data
 from fastapi import Query
+import json
 
 app = FastAPI(title="Location Intelligence", version="0.1")
 
@@ -138,194 +139,156 @@ async def get_buildings(latitude: float, longitude: float):
         raise HTTPException(status_code=500, detail="Failed to fetch data from Overpass API")
     return data
 
-
-# ---------------- Simple In-Memory Cache ----------------
-CACHE = {}
-CACHE_TTL = 86400  # 24 hours (in seconds)
-
-
+# __________________________Implementation of Filter's Endpoints______________________
+CACHE={}
+CACHE_TTL=86400  # 24 hours
 def get_cache_key(filter_name: str, session_id: Optional[str]):
-    return f"{filter_name.lower()}::{session_id or 'default'}"
+    return f"{(session_id or 'default')}::{filter_name.lower()}"
 
+def normalize_location(loc: Optional[dict]):
+    """Return {'latitude': float, 'longitude': float} or None"""
+    if not loc:
+        return None
+    # accept either set
+    if "latitude" in loc and "longitude" in loc:
+        try:
+            return {"latitude": float(loc["latitude"]), "longitude": float(loc["longitude"])}
+        except Exception:
+            return None
+    if "lat" in loc and "lon" in loc:
+        try:
+            return {"latitude": float(loc["lat"]), "longitude": float(loc["lon"])}
+        except Exception:
+            return None
+    # fallback: maybe lat/lng keys
+    if "lat" in loc and "lng" in loc:
+        try:
+            return {"latitude": float(loc["lat"]), "longitude": float(loc["lng"])}
+        except Exception:
+            return None
+    return None
 
-# ---------------- Core Logic Function ----------------
 async def fetch_or_generate_filter_data(body: ChatRequest, filter_name: str):
     """
-    Shared logic: tries scraping → fallback to chatbot → saves to MongoDB.
+    Unified logic:
+     - check memory cache (done by caller if desired)
+     - try scraper
+     - if scraper fails, call agent
+     - prefer structured JSON from agent (fallback to text parser)
+     - normalize location
+     - save to MongoDB (upsert)
+     - write to cache
+     - return dict compatible with ChatResponse
     """
     try:
-        city_name = body.message or "Surat"
-        print(f"[INFO] Fetching data for {filter_name} at {city_name}")
+        print(f"[FETCH] Generating data for {filter_name} (session={body.session_id})")
 
-        # Step 1️⃣ Try scraping
-        scraped = scrape_filter_data(filter_name, city_name)
-
-        if scraped and "error" not in scraped:
-            save_to_mongodb(
-                "filter_responses",
-                {
-                    "session_id": body.session_id,
-                    "filter": filter_name,
-                    "scraped_insights": scraped,
-                    "location": {"latitude": body.latitude, "longitude": body.longitude},
-                    "timestamp": time.time(),
-                },
-                query_params={"filter": filter_name, "session_id": body.session_id},
+        # 1) Try scraping first
+        scraped = scrape_filter_data(filter_name, body.message or "")
+        if scraped and "error" not in scraped and "note" not in scraped:
+            insights = scraped
+            agent_location = normalize_location({
+                "latitude": body.latitude,
+                "longitude": body.longitude
+            })
+            agent_text = None
+        else:
+            # 2) Fallback to agent
+            prompt = (
+                f"Provide detailed {filter_name} data and relevant geospatial insights for "
+                f"{body.message or 'the specified location'}. "
+                f"Respond ONLY with valid JSON that is compatible with json.loads() function of python in the format similar to:\n\n"
+                f"{{\n"
+                f'  "latitude": <float>,\n'
+                f'  "longitude": <float>,\n'
+                f'  "bounding_box": [<min_lat>, <max_lat>, <min_lon>, <max_lon>],\n'
+                f'  "years": <object>,\n' # Only for Temporal Data
+                f'  "data": <float>,\n'
+                f'  "dataset": "<string>",\n'
+                f'  "source": "<string>",\n'
+                f'  "summary": "<short text description>"\n'
+                f"}}\n\n"
+                f"If you are unsure of any field, set it to null and Add any missing key-value pair which is critical for the said context."
             )
-            CACHE[get_cache_key(filter_name, body.session_id)] = {
-                "data": scraped,
-                "timestamp": time.time(),
-            }
 
-            return {
-                "answer": f"Scraped data for {filter_name}: {scraped}",
-                "location": {"latitude": body.latitude, "longitude": body.longitude},
-                "insights": scraped,
-            }
+            print(f"[INFO] Scraper not available for {filter_name}, calling agent with prompt: {prompt}")
+            agent_result = await run_agent(
+                prompt,
+                session_id=body.session_id,
+                latitude=body.latitude,
+                longitude=body.longitude,
+            )
 
-        # Step 2️⃣ Fallback → chatbot
-        print(f"[WARN] Scraper failed, calling chatbot for {filter_name}")
-        result = await run_agent(
-            f"Provide numeric insights for {filter_name} at this location",
-            session_id=body.session_id,
-            latitude=body.latitude,
-            longitude=body.longitude,
-        )
+            # agent_result.get("text") may already be JSON
+            agent_text = agent_result.get("text", "").strip()
+            parsed_insights = None
 
-        agent_text = result.get("text", "")
-        insights = parse_agent_response(agent_text, filter_name)
+            # 3) Try to parse JSON directly
+            try:
+                parsed_insights = json.loads(agent_text)
+                if not isinstance(parsed_insights, dict):
+                    raise ValueError("Agent JSON is not an object")
+                print("[INFO] Successfully parsed agent JSON")
+            except Exception as e:
+                logging.warning(f"Agent response not valid JSON: {e}")
+                # fallback: use your existing parser
+                parsed_insights = parse_agent_response(agent_text, filter_name)
 
-        save_to_mongodb(
-            "filter_responses",
-            {
-                "session_id": body.session_id,
-                "filter": filter_name,
-                "scraped_insights": insights,
-                "location": {"latitude": body.latitude, "longitude": body.longitude},
-                "timestamp": time.time(),
+            # 4) Normalize location
+            agent_location = normalize_location(parsed_insights or agent_result.get("location"))
+
+        # 5) Prepare document for MongoDB
+        doc = {
+            "filter": filter_name,
+            "session_id": body.session_id,
+            "location": agent_location or {
+                "latitude": body.latitude,
+                "longitude": body.longitude,
             },
-            query_params={"filter": filter_name, "session_id": body.session_id},
-        )
-
-        CACHE[get_cache_key(filter_name, body.session_id)] = {
-            "data": insights,
+            "insights": insights if scraped and "error" not in scraped and "note" not in scraped else parsed_insights,
+            "agent_text": agent_text,
+            "source": "scraper" if (scraped and "error" not in scraped and "note" not in scraped) else "agent",
             "timestamp": time.time(),
         }
 
-        return {"answer": agent_text, "location": result.get("location"), "insights": insights}
+        # 6) Save to MongoDB (upsert)
+        try:
+            save_to_mongodb(
+                "filter_responses",
+                doc,
+                query_params={"filter": filter_name, "session_id": body.session_id},
+            )
+            print(f"[DB] Saved filter {filter_name} for session {body.session_id}")
+        except Exception:
+            logging.exception("Failed to save filter response to MongoDB")
+
+        # 7) Cache the result
+        cache_key = get_cache_key(filter_name, body.session_id)
+        CACHE[cache_key] = {
+            "data": doc["insights"],
+            "timestamp": time.time(),
+            "location": doc["location"],
+        }
+
+        # 8) Build response
+        response = {
+            "answer": agent_text or f"Scraped data for {filter_name}",
+            "location": doc["location"],
+            "insights": doc["insights"],
+        }
+        return response
 
     except Exception as e:
         logging.exception("fetch_or_generate_filter_data failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ---------------- Utility Functions ----------------
-def get_cache_key(filter_name: str, session_id: Optional[str]):
-    return f"{session_id or 'default'}::{filter_name}"
-
-
-def normalize_location(loc: dict):
-    """Ensure consistent field names for response validation."""
-    if not loc:
-        return None
-    if "lat" in loc and "lon" in loc:
-        return {"latitude": loc["lat"], "longitude": loc["lon"]}
-    elif "latitude" in loc and "longitude" in loc:
-        return loc
-    else:
-        return None
-
-
-# ---------------- Mock Functions ----------------
-def scrape_filter_data(filter_name, city_name):
-    """Mock web-scraping or data-fetching."""
-    if "precipitation" in filter_name.lower():
-        return {"rainfall_mm": 102, "source": "Mock Weather Data"}
-    elif "air quality" in filter_name.lower():
-        return {"aqi": 68, "status": "Moderate"}
-    elif "crime" in filter_name.lower():
-        return {"crime_index": 42.7, "safety_level": "Safe"}
-    return {"note": f"No scraper implemented for {filter_name}"}
-
-
-def save_to_mongodb(collection, data, query_params=None):
-    print(f"[MOCK-DB] Saved in {collection}: {data}")
-
-
-def fetch_from_mongodb(collection, filter_query=None, limit=1):
-    print(f"[MOCK-DB] Fetching from {collection} with query: {filter_query}")
-    return []  # simulate empty DB
-
-async def run_agent(prompt, session_id, latitude, longitude):
-    """Mock chatbot/LLM agent response."""
-    print(f"[MOCK-AGENT] Running agent for: {prompt}")
-    return {
-        "text": f"Generated insights for '{prompt}'",
-        "location": {"lat": latitude, "lon": longitude},
-    }
-
-def parse_agent_response(text, filter_name):
-    """Simplified parser to extract key insight text."""
-    return {"parsed": f"Insight about {filter_name}", "raw_text": text}
-
-
-# ---------------- Core Fetch Logic ----------------
-async def fetch_or_generate_filter_data(body: ChatRequest, filter_name: str):
-    """
-    Main logic: generate fresh data using scraper or agent.
-    """
-    print(f"[FETCH] Generating data for {filter_name}...")
-
-    # 1️⃣ Try web scraper first
-    scraped_data = scrape_filter_data(filter_name, body.message)
-    if "error" not in scraped_data and "note" not in scraped_data:
-        insights = scraped_data
-    else:
-        # 2️⃣ Else fallback to chatbot/agent logic
-        agent_out = await run_agent(
-            f"{filter_name} data for {body.message}",
-            body.session_id,
-            body.latitude,
-            body.longitude,
-        )
-        insights = parse_agent_response(agent_out["text"], filter_name)
-
-    # 3️⃣ Save result to mock DB
-    save_to_mongodb(
-        "filter_responses",
-        {
-            "filter": filter_name,
-            "session_id": body.session_id,
-            "location": {
-                "latitude": body.latitude,
-                "longitude": body.longitude,
-            },
-            "scraped_insights": insights,
-            "timestamp": time.time(),
-        },
-    )
-
-    # 4️⃣ Store in cache
-    cache_key = get_cache_key(filter_name, body.session_id)
-    CACHE[cache_key] = {"data": insights, "timestamp": time.time()}
-
-    return ChatResponse(
-        answer=f"Generated new data for {filter_name}",
-        location={"latitude": body.latitude, "longitude": body.longitude},
-        insights=insights,
-    )
-
-
-# ---------------- POST Route ----------------
+# ----------------- Use in your routes -----------------
+# POST /chat/filter (force refresh) should call the unified function and return its dict
 @app.post("/chat/filter", response_model=ChatResponse)
 async def chat_filter_query(body: ChatRequest, filter_name: str):
-    """
-    POST route — force-refresh data for a given filter.
-    """
     return await fetch_or_generate_filter_data(body, filter_name)
 
-
-# ---------------- GET Route (Cache + Mock DB) ----------------
+# GET /chat/filter should consult cache / mongo / then call unified fetch function
 @app.get("/chat/filter", response_model=ChatResponse)
 async def get_or_fetch_filter_data(
     filter_name: str = Query(..., alias="filter_name"),
@@ -333,25 +296,18 @@ async def get_or_fetch_filter_data(
     latitude: Optional[float] = Query(None),
     longitude: Optional[float] = Query(None),
 ):
-    """
-    Unified GET endpoint:
-      ✅ Step 1: Check in-memory cache
-      ✅ Step 2: Check MongoDB
-      ✅ Step 3: Auto-fetch fresh data
-    """
     cache_key = get_cache_key(filter_name, session_id)
     cached = CACHE.get(cache_key)
 
-    # Step 1️⃣: Memory cache
     if cached and (time.time() - cached["timestamp"] < CACHE_TTL):
         print(f"[CACHE HIT] Returning cached {filter_name}")
-        return ChatResponse(
-            answer=f"Cached result for {filter_name}",
-            location={"latitude": latitude, "longitude": longitude},
-            insights=cached["data"],
-        )
+        return {
+            "answer": f"Cached result for {filter_name}",
+            "location": cached.get("location"),
+            "insights": cached["data"],
+        }
 
-    # Step 2️⃣: MongoDB mock
+    # Try Mongo
     q = {"filter": filter_name}
     if session_id:
         q["session_id"] = session_id
@@ -361,18 +317,14 @@ async def get_or_fetch_filter_data(
         doc = docs[0]
         if (time.time() - doc.get("timestamp", 0)) < CACHE_TTL:
             print(f"[MONGO HIT] Returning DB cached {filter_name}")
-            CACHE[cache_key] = {
-                "data": doc["scraped_insights"],
-                "timestamp": time.time(),
+            CACHE[cache_key] = {"data": doc["scraped_insights"], "timestamp": time.time(), "location": normalize_location(doc.get("location"))}
+            return {
+                "answer": f"MongoDB cached data for {filter_name}",
+                "location": normalize_location(doc.get("location")),
+                "insights": doc["scraped_insights"],
             }
-            return ChatResponse(
-                answer=f"MongoDB cached data for {filter_name}",
-                location=normalize_location(doc.get("location")),
-                insights=doc["scraped_insights"],
-            )
 
-    # Step 3️⃣: Fetch new data
-    print(f"[CACHE MISS] Fetching fresh data for {filter_name}")
+    # Finally: fetch/generate fresh data
     body = ChatRequest(
         session_id=session_id or "auto-session",
         message="Surat",
