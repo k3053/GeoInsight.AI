@@ -11,10 +11,10 @@ import "leaflet/dist/leaflet.css";
 const API_URL = "http://localhost:8000/chat/query"; // Ensure backend runs on :8000
 
 const suggestedQuestions = [
-  "What are the advantages of using Next.js?",
-  "Write code to demonstrate Dijkstra's algorithm",
-  "Help me write an essay about Silicon Valley",
-  "What is the weather in San Francisco?",
+  "What is the average elevation of the selected location?",
+  "Analyze the property value trends in Bangalore.",
+  "Which areas in New Delhi have a low Air Quality Index?",
+  "Show me nearby parks and schools in Pune."
 ];
 
 export default function Chatbot() {
@@ -67,25 +67,6 @@ const handleMapSearch = async (query = searchQuery) => {
     }
   };
   
-  // const handleMapSearch = async (query = searchQuery) => {
-  //   if (!query.trim()) return;
-
-  //   try {
-  //     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-  //     const data = await response.json();
-      
-  //     if (data && data.length > 0) {
-  //       const { lat, lon } = data[0];
-  //       const newPos = [parseFloat(lat), parseFloat(lon)];
-  //       setMapCenter(newPos);
-  //     } else {
-  //       alert("Location not found. Please try a different query.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to fetch coordinates for search query", error);
-  //   }
-  // };
-
   // Nominatim suggestions with debounce + cache
   const fetchSuggestions = async (q) => {
     if (q.length < 3) {
@@ -239,7 +220,7 @@ const handleMapSearch = async (query = searchQuery) => {
     <div className="min-h-screen bg-[#111] text-white flex relative font-sans">
         {/* Left 50% Map */}
       <div className="w-1/2 h-screen relative">
-            <div className="absolute top-4 left-4 z-[1000] w-full max-w-sm">
+        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-[1000] w-[60%] sm:w-[50%] max-w-lg">
             <div className="relative flex items-center">
                 <input
                     type="text"

@@ -55,7 +55,10 @@ L.Icon.Default.mergeOptions({
 function ChangeMapView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.flyTo(center, zoom);
+
+    if (center && (center[0] !== map.getCenter().lat || center[1] !== map.getCenter().lng)) {
+        map.flyTo(center, zoom);
+    }
   }, [center, zoom, map]);
   return null;
 }
@@ -148,6 +151,10 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
       const newPos = [locationFromChat.latitude, locationFromChat.longitude];
       setPosition(newPos);
       setMapCenter(newPos);
+    }
+    else if (Array.isArray(locationFromChat) && locationFromChat.length === 2) {
+      setPosition(locationFromChat);
+      setMapCenter(locationFromChat);
     }
   }, [locationFromChat]);
 
