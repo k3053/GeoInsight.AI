@@ -30,6 +30,14 @@ export default function Chatbot() {
   const initialCenter = coords || [20.5937, 78.9629]; // fallback to India if none
   const [mapCenter, setMapCenter] = useState(initialCenter);
 
+  // Define a dummy function for onLocationSelect
+  const handleMapClick = (coords) => {
+    // In the Chatbot view, a map click should only update the center,
+    // not trigger a state change like setLocationSelected(true) in HomePage.
+    console.log("Map clicked in Chatbot mode:", coords);
+    // You might want to update mapCenter here instead, which is already done via setMapCenter in handleSend
+    // For now, it just logs and prevents the error.
+  };
   // Scroll to bottom on new messages
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -113,7 +121,9 @@ export default function Chatbot() {
     <div className="min-h-screen bg-[#111] text-white flex relative font-sans">
         {/* Left 50% Map */}
       <div className="w-1/2 h-screen">
-            <MapSection locationFromChat={mapCenter} />
+            <MapSection 
+              locationFromChat={mapCenter}
+              onLocationSelect={handleMapClick} />
       </div>
 
       {/* Right 50% Chat Interface */}

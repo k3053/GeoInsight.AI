@@ -65,8 +65,8 @@ const MapClickHandler = ({ onLocationSelect, setPosition }) => {
     click(e) {
   console.log("Map clicked! Coordinates:", e.latlng);     
   const newPos = [e.latlng.lat, e.latlng.lng];
-  setPosition(newPos);                                  // This still updates the marker's position.
-  onLocationSelect({  lat: e.latlng.lat, lng: e.latlng.lng}); // This now sends the exact coordinates to the parent.
+  setPosition(newPos);                                  
+  onLocationSelect({  lat: e.latlng.lat, lng: e.latlng.lng});
 },
   });
   return null;
