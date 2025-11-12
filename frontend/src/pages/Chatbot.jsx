@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useNavigate, useLocation } from "react-router-dom";
 import { MdArrowUpward, MdChat } from "react-icons/md";
+import { Search } from "lucide-react";
 import MapSection from "../components/MapSection";
 import { MapContainer, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -21,6 +22,13 @@ export default function Chatbot() {
   const [messages, setMessages] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const cacheRef = useRef({}); // cache for search queries
+  const debounceRef = useRef(null);
+
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,12 +40,122 @@ export default function Chatbot() {
 
   // Define a dummy function for onLocationSelect
   const handleMapClick = (coords) => {
-    // In the Chatbot view, a map click should only update the center,
-    // not trigger a state change like setLocationSelected(true) in HomePage.
     console.log("Map clicked in Chatbot mode:", coords);
-    // You might want to update mapCenter here instead, which is already done via setMapCenter in handleSend
-    // For now, it just logs and prevents the error.
   };
+const handleMapSearch = async (query = searchQuery) => {
+    if (!query.trim()) return;
+
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const newPos = [parseFloat(lat), parseFloat(lon)];
+        
+        // Update both the position state in MapSection (via locationFromChat prop) 
+        // and the Chatbot's local map center state.
+        setMapCenter(newPos);
+        
+        // Optionally, clear the chat search bar after a successful search
+        // setSearchQuery(""); 
+      } else {
+        alert("Location not found. Please try a different query.");
+      }
+    } catch (error) {
+      console.error("Failed to fetch coordinates for search query", error);
+    }
+  };
+  
+  // const handleMapSearch = async (query = searchQuery) => {
+  //   if (!query.trim()) return;
+
+  //   try {
+  //     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+  //     const data = await response.json();
+      
+  //     if (data && data.length > 0) {
+  //       const { lat, lon } = data[0];
+  //       const newPos = [parseFloat(lat), parseFloat(lon)];
+  //       setMapCenter(newPos);
+  //     } else {
+  //       alert("Location not found. Please try a different query.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to fetch coordinates for search query", error);
+  //   }
+  // };
+
+  // Nominatim suggestions with debounce + cache
+  const fetchSuggestions = async (q) => {
+    if (q.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    if (cacheRef.current[q]) {
+      setSuggestions(cacheRef.current[q]);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`
+      );
+      const data = await res.json();
+      cacheRef.current[q] = data;
+      setSuggestions(data);
+    } catch (err) {
+      console.error("Error fetching suggestions:", err);
+    }
+  };
+
+  // Keyboard Navigation Logic
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (suggestions.length > 0 && activeSuggestion === -1) {
+        e.preventDefault();
+        return;
+      }
+    }
+
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        setActiveSuggestion((prev) => Math.min(prev + 1, suggestions.length - 1));
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        setActiveSuggestion((prev) => Math.max(prev - 1, 0));
+        e.preventDefault();
+      } else if (e.key === 'Enter') {
+        if (activeSuggestion >= 0 && activeSuggestion < suggestions.length) {
+          const item = suggestions[activeSuggestion];
+          setSearchQuery(item.display_name);
+          setSuggestions([]);
+          setActiveSuggestion(-1);
+          handleMapSearch(item.display_name); // Use the selected suggestion
+        } 
+      }
+    } else if (e.key === 'Enter') {
+      handleMapSearch(); // Use the current input
+    }
+  };
+
+  // Debounce search input effect
+  useEffect(() => {
+    if (!searchQuery) {
+      setSuggestions([]);
+      setActiveSuggestion(-1);
+      return;
+    }
+
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchSuggestions(searchQuery);
+    }, 500); // Debounce delay
+
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -120,14 +238,53 @@ export default function Chatbot() {
   return (
     <div className="min-h-screen bg-[#111] text-white flex relative font-sans">
         {/* Left 50% Map */}
-      <div className="w-1/2 h-screen">
+      <div className="w-1/2 h-screen relative">
+            <div className="absolute top-4 left-4 z-[1000] w-full max-w-sm">
+            <div className="relative flex items-center">
+                <input
+                    type="text"
+                    placeholder="Search location on map..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown} // 💡 Use the new key handler
+                    className="w-full bg-[var(--theme-surface)] text-white px-4 py-2 pr-10 rounded-full border border-[var(--theme-border)] focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary)]"
+                />
+                <button
+                    onClick={() => handleMapSearch()}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-[var(--geo-accent)] text-white p-1.5 rounded-full flex items-center justify-center hover:bg-white hover:text-black focus:outline-none"
+                    style={{ height: '32px', width: '32px' }}
+                >
+                    <Search size={20} />
+                </button>
+            </div>
+
+            {/* 💡 Suggestions Dropdown */}
+            {suggestions.length > 0 && (
+                <ul className="absolute top-full left-0 w-full bg-white text-black rounded-b shadow-md max-h-40 overflow-y-auto z-[1001]">
+                    {suggestions.map((item, idx) => (
+                    <li
+                        key={idx}
+                        onClick={() => {
+                            setSearchQuery(item.display_name);
+                            setSuggestions([]);
+                            setActiveSuggestion(-1);
+                            handleMapSearch(item.display_name); // Use the selected item
+                        }}
+                        className={`px-3 py-2 hover:bg-gray-200 cursor-pointer text-[13px] ${activeSuggestion === idx ? 'bg-gray-200' : ''}`}
+                    >
+                        {item.display_name}
+                    </li>
+                    ))}
+                </ul>
+            )}
+        </div>
             <MapSection 
               locationFromChat={mapCenter}
               onLocationSelect={handleMapClick} />
       </div>
 
       {/* Right 50% Chat Interface */}
-      <div className="w-1/2 flex flex-col relative border-l border-[#222]">
+      <div className="w-1/2 h-screen flex-1 relative flex flex-col border-l border-[#222]">
         {/* Header */}
         <header className="bg-[var(--theme-surface)] border-b border-[var(--theme-border)] p-4 flex items-center gap-4 shadow-md">
           <button
