@@ -1,129 +1,127 @@
-
 import React from "react";
 import {
+  ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis,
-  LineChart, Line, CartesianGrid, LabelList
+  LineChart, Line, CartesianGrid
 } from "recharts";
 
-// Population categories (example buckets)
-const POP_CATEGORIES = [
-  { label: "Low", range: [0, 1000], color: "#00E676", description: "Very low population density." },
-  { label: "Medium", range: [1001, 10000], color: "#FFEB3B", description: "Moderate population density." },
-  { label: "High", range: [10001, 20000], color: "#FF9800", description: "High population density." },
-  { label: "Overload", range: [20001, 50000], color: "#E53935", description: "Extremely high population density." },
-];
+const COLORS = ["#42A5F5", "#90CAF9", "#66BB6A", "#FFA726", "#F4511E", "#E53935", "#8E24AA", "#3949AB"];
 
-export default function PopulationCharts({ stats }) {
-  const population = stats?.totals?.population || 0;
-  const percent = ((population / 50000) * 100).toFixed(1);
+export default function PopulationCharts({ stats = {} }) {
+  // current population number (accept stats.data or fallback)
+  const current = Number(stats.data ?? stats.totals?.population ?? 0) || 0;
+  // max scale (allow override from stats.max, else default 50000)
+  const maxScale = Number(stats.max ?? 50000) || 50000;
+  const percent = Math.min(100, (current / maxScale) * 100);
 
-  // Find current category
-  const category = POP_CATEGORIES.find(c => population >= c.range[0] && population <= c.range[1]) || POP_CATEGORIES[POP_CATEGORIES.length - 1];
-
-  // Pie chart data
+  // Pie data: current % and remaining
   const pieData = [
-    { name: `${category.label} (${population})`, value: population, color: category.color },
-    { name: "Remaining to 50k", value: Math.max(0, 50000 - population), color: "#eeeeee" },
+    { name: `Current (${current})`, value: current, color: COLORS[0] },
+    { name: `Remaining to ${maxScale}`, value: Math.max(0, maxScale - current), color: "#eeeeee" },
   ];
 
-  // Bar chart data
-  const barData = POP_CATEGORIES.map(c => {
-    const inRange = population >= c.range[0] && population <= c.range[1];
-    return {
-      category: c.label,
-      value: inRange ? percent : 0,
-      color: c.color,
-    };
-  });
+  // Build years series from stats.years (ignore null/undefined)
+  const yearsSeries = Array.isArray(stats?.years)
+    ? stats.years // support array shape if provided
+    : stats?.years && typeof stats.years === "object"
+    ? Object.entries(stats.years)
+        .filter(([, v]) => v != null && !Number.isNaN(Number(v)))
+        .map(([year, value]) => ({ year: String(year), value: Number(value) }))
+        .sort((a, b) => Number(a.year) - Number(b.year))
+    : [];
 
-  // Line chart (trend, simulated)
-  const lineData = [
-    { year: "2010", value: Math.max(0, population * 0.7) },
-    { year: "2015", value: Math.max(0, population * 0.85) },
-    { year: "2020", value: population },
-  ].map(d => ({
-    ...d,
-    percent: ((d.value / 50000) * 100).toFixed(1),
-    color: POP_CATEGORIES.find(c => d.value >= c.range[0] && d.value <= c.range[1])?.color || "#999"
-  }));
+  // Summary text
+  const summaryText = stats?.summary ? String(stats.summary) : null;
 
   return (
-    <div className="card-glass p-4">
+    <div className="card-glass p-4 space-y-6">
       <h2 className="text-[var(--geo-accent)] font-semibold mb-2">Population Analysis</h2>
 
-      <div className="grid md:grid-rows-3 gap-3">
-        {/* ----- Pie Chart ----- */}
-        <div className="p-3 rounded-lg bg-black/30 outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-4">Population % of Max (50,000)</h3>
-          <div className="flex flex-row items-center mt-7 gap-6 ml-8">
-            <PieChart width={300} height={260} margin={{ top: 10, right: 20, bottom: 40, left: 20 }}>
-              <Legend verticalAlign="top" height={36} align="left" wrapperStyle={{ paddingBottom: 80 }}/>
+      {summaryText && (
+        <div className="p-3 bg-gray-800 text-sm rounded">
+          <div className="font-semibold mb-1">Summary</div>
+          <div className="text-sm">{summaryText}</div>
+        </div>
+      )}
+
+      {/* Pie (percentage of max) */}
+      <div className="p-3 rounded-lg bg-black/30 w-full">
+        <h3 className="text-sm font-semibold mb-3">Population % of Max ({maxScale})</h3>
+        <div style={{ width: "100%", height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Legend verticalAlign="top" height={36} />
               <Pie
                 data={pieData}
                 dataKey="value"
                 nameKey="name"
-                outerRadius={90}
-                label={({ value }) => `${((value / 50000) * 100).toFixed(0)}%`}
+                outerRadius={80}
+                label={({ name }) => (name.startsWith("Current") ? `${percent.toFixed(1)}%` : null)}
               >
                 {pieData.map((entry, idx) => (
                   <Cell key={idx} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip formatter={(v) => `${v}`} />
             </PieChart>
-          </div>
-          <div className="mt-2 p-2 bg-gray-800 text-sm rounded">
-            Current population is <b>{population}</b> ({percent}% of max scale). <br />
-            <span style={{ color: category.color, fontWeight: "bold" }}>{category.label}</span>: {category.description}
-          </div>
+          </ResponsiveContainer>
         </div>
+        <div className="mt-2 text-sm p-2 bg-gray-800 rounded">
+          Current: <b>{current}</b> ({percent.toFixed(1)}% of {maxScale})
+        </div>
+      </div>
 
-        {/* ----- Bar Chart ----- */}
-        <div className="p-3 rounded-lg bg-black/30 mt-[0px] outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-2">Population Category Classification</h3>
-          <BarChart
-            width={350}
-            height={320} 
-            data={barData}
-            margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
-          >
-            <XAxis
-              dataKey="category"
-              angle={-25}
-              textAnchor="end"
-              interval={0}
-            />
-            <YAxis unit="%" />
-            <Tooltip />
-            <Bar dataKey="value">
-              {barData.map((entry, index) => (
-                <Cell key={index} fill={entry.color} />
-              ))}
-            </Bar>
-          </BarChart>
-          <div className="mt-5 p-2 bg-gray-800 text-sm rounded">
-            All population categories are shown. The current category bar is filled with its
-            percentage of the maximum scale (50,000).
-          </div>
+      {/* Bar chart: categories */}
+      <div className="p-3 rounded-lg bg-black/30 w-full">
+        <h3 className="text-sm font-semibold mb-3">Population Category</h3>
+        <div style={{ width: "100%", height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            {Array.isArray(stats?.categories) && stats.categories.length > 0 ? (
+              <BarChart data={stats.categories} margin={{ left: 10, right: 10, top: 10, bottom: 40 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} angle={-25} textAnchor="end" interval={0} />
+                <YAxis unit="%" />
+                <Tooltip />
+                <Bar dataKey="percent">
+                  {stats.categories.map((c, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            ) : (
+              <BarChart data={[{ label: "Current", percent }]} margin={{ left: 10, right: 10, top: 10, bottom: 40 }}>
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis unit="%" domain={[0, 100]} />
+                <Tooltip />
+                <Bar dataKey="percent">
+                  <Cell fill={COLORS[0]} />
+                </Bar>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
         </div>
+      </div>
 
-        {/* ----- Line Chart ----- */}
-        <div className="p-3 rounded-lg bg-black/30 outline-1 outline-white-700">
-          <h3 className="text-sm font-semibold mb-2">Population Trend (2010-2020)</h3>
-          <div className="flex flex-col items-left mt-7">
-            <LineChart width={350} height={280} data={lineData}>
-              <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
-              <XAxis dataKey="year" />
-              <YAxis domain={[0, 50000]} />
-              <Tooltip formatter={(val) => `${val} people`} />
-              <Line type="monotone" dataKey="value" stroke="#82ca9d" />
-            </LineChart>
+      {/* Line chart: stats.years */}
+      <div className="p-3 rounded-lg bg-black/30 w-full">
+        <h3 className="text-sm font-semibold mb-3">Population by Year</h3>
+        {yearsSeries.length > 0 ? (
+          <div style={{ width: "100%", height: 360 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={yearsSeries} margin={{ left: 10, right: 10, top: 10, bottom: 40 }}>
+                <CartesianGrid stroke="#444" strokeDasharray="3 3" />
+                <XAxis dataKey="year" tick={{ fontSize: 11 }} />
+                <YAxis domain={["dataMin", "dataMax"]} />
+                <Tooltip formatter={(v) => `${v} people`} />
+                <Line type="monotone" dataKey="value" stroke="#82ca9d" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <div className="mt-8 p-2 bg-gray-800 text-sm rounded">
-            Population values over the past decade. Current population is in the <b style={{ color: category.color }}>{category.label}</b> range.
+        ) : (
+          <div className="flex items-center justify-center h-48 text-sm text-[var(--theme-text-secondary)]">
+            No yearly population data available
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
