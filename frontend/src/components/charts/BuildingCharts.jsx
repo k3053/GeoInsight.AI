@@ -108,7 +108,7 @@ export default function BuildingCharts({ stats }) {
   // Build frequency map by building type (defaulting to "unknown" if missing)
   // Re-aggregate using shortenType for the building type keys.
   const typeMap = {};
-  points.forEach(point => {
+  points?.forEach(point => {
     const rawType = point && point.type ? point.type : "unknown";
     const type = shortenType(rawType);
     typeMap[type] = (typeMap[type] || 0) + 1;

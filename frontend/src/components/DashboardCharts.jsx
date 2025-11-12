@@ -141,28 +141,28 @@ const DashboardCharts = () => {
           return (
             <>
               <NDVILegend ndvi={stats?.totals?.insights} />
-              <NDVICharts stats={stats} />
+              <NDVICharts stats={stats?.totals?.insights} />
             </>
           );
         case "Precipitation Levels":
           return (
             <>
-              <PrecipitationLegend precipitation={stats?.totals?.precipitation} />
-              <PrecipitationCharts stats={stats} />
+              <PrecipitationLegend precipitation={stats?.totals?.insights} />
+              <PrecipitationCharts stats={stats?.totals?.insights} />
             </>
           );
         case "Temporal Population Density":
           return (
             <>
-              <PopulationLegend population={stats?.totals?.population} />
-              <PopulationCharts stats={stats} />
+              <PopulationLegend population={stats?.totals?.insights} />
+              <PopulationCharts stats={stats?.totals?.insights} />
             </>
           );
         case "Temporal Green Cover Analysis":
           return (
             <>
-              <GreenCoverLegend green={stats?.totals?.green_cover} />
-              <GreenCoverCharts stats={stats} />
+              <GreenCoverLegend green={stats?.totals?.insights} />
+              <GreenCoverCharts stats={stats?.totals?.insights} />
             </>
           );
         // Generic components for remaining filters
@@ -180,11 +180,11 @@ const DashboardCharts = () => {
           return (
             <>
               <GenericLegend 
-                data={stats?.totals?.[selectedFilter.toLowerCase().replace(/\s+/g, '_')] || stats} 
+                data={stats?.totals?.insights} 
                 title={selectedFilter} 
               />
               <GenericChart 
-                data={stats?.totals?.[selectedFilter.toLowerCase().replace(/\s+/g, '_')] || stats} 
+                data={stats?.totals?.insights} 
                 filterName={selectedFilter}
               />
             </>
