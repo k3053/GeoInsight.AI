@@ -6,18 +6,22 @@ import {
   FaWind, FaCloudSun, FaBuilding, FaMountain, FaSun, FaLeaf, FaCloudRain, FaUsers, FaTree, FaMapMarkedAlt, FaDrawPolygon, FaRoad, FaExclamationTriangle, FaCity, FaTint, FaShieldAlt, FaDollarSign, FaStore, FaChartLine, FaLandmark, FaEllipsisV 
 } from 'react-icons/fa';
 
-// 💡 Define the role-based filter access map
 const ROLE_FILTER_MAP = {
   'Citizen': [
     "Air Quality Index",
     "Weather Forecast",
+    "Water Quality Index",
+    "Crime Rate/Safety Index",
+    "Number of Buildings",
     "Distance to Nearest Amenities",
+    "Solar"
   ],
   'Urban Planner': [
     "Air Quality Index",
-    "Weather Forecast",
+    "Land Use/Land Cover",
     "Number of Buildings",
     "Land Use/Land Cover",
+    "Vegetation Index(NDVI)",
     "Public Infrastructure",
     "Urban Sprawl Analysis",
   ],
@@ -25,9 +29,11 @@ const ROLE_FILTER_MAP = {
     "Number of Buildings",
     "Elevation",
     "Solar",
+    "Vegetation Index(NDVI)",
     "Property Value Trends",
     "Property Development Potential",
     "Land Price",
+    "Land Use/Land Cover",
     "Distance to Nearest Amenities",
   ],
   // Researcher gets all filters
@@ -86,24 +92,21 @@ const Filters = ({ locationSelected, userRole }) => {
   const [showMore, setShowMore] = useState(false);
   const dropdownRef = useRef(null);
 
-  // 💡 Determine which filters to show based on the user's role
   const availableFilters = ROLE_FILTER_MAP[userRole] || ROLE_FILTER_MAP['Citizen']; 
   
-  // Extract primary filters (first 3) & additional filters
   const primaryFilters = availableFilters.slice(0, 3);
   const additionalFilters = availableFilters.slice(3);
 
   const handleClick = (filter) => {
     if (!locationSelected) {
-      alert("Please select a location first.");
+      // alert("Please select a location first.");
+      console.log("Please select a location first.");
       return;
     }
-    // 💡 Security check: Only allow selecting a filter if it is in the available list for the role
+    
     if (!availableFilters.includes(filter)) {
-        // This check is primarily for UI consistency, the server should enforce true access control.
-        alert(`Access Denied. The '${filter}' filter is not available for the '${userRole}' role.`);
-        // Also deselect the current filter if it's the one that's restricted
-        if (selectedFilter === filter) {
+      console.log(`Access Denied. The '${filter}' filter is not available for the '${userRole}' role.`);
+      if (selectedFilter === filter) {
              dispatch(setFilter(null));
         }
         return;
@@ -163,12 +166,18 @@ const Filters = ({ locationSelected, userRole }) => {
                     <button
                       key={filter}
                       onClick={() => handleClick(filter)}
-                      className={`w-full text-left px-3 py-2 hover:bg-gray-700 ${
-                        selectedFilter === filter ? "bg-[#64ffda] text-black" : ""
+                      className={`w-full text-left text-sm px-3 py-2 flex items-center gap-2 transition-colors duration-100 ${
+                        selectedFilter === filter 
+                          ? "bg-[#64ffda] text-black" 
+                          : "hover:bg-gray-700 hover:text-white" // Explicitly ensure hover text color is stable
                       }`}
                       title={filter}
                     >
-                      {icons[filter]} {filter}
+                      {/* {icons[filter]} */}
+                      <span className="w-4 h-4 flex items-center justify-center">
+                         {icons[filter]} 
+                      </span>
+                      {filter}
                     </button>
                   ))}
                 </div>

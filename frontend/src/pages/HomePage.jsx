@@ -60,9 +60,10 @@ const HomePage = ({ handleLogout, userRole }) => {
         </div>
 
         {/* Box 2 & 4: Dashboard (Entire Right Column on Desktop) */}
-        <div className="h-[70vh] lg:h-auto lg:col-start-2 lg:row-start-1 lg:row-span-2 card-floating overflow-hidden">
+        <div className="h-[60vh] w-[97%] lg:h-auto lg:col-start-2 lg:row-start-1 lg:row-span-2 card-floating overflow-auto">
           <DashboardCharts locationSelected={locationSelected} />
         </div>
+
       </main>
     </div>
   );
