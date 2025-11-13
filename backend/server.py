@@ -6,10 +6,6 @@ import requests
 import googlemaps
 import overpy
 from mongo_connect import save_to_mongodb
-from chat_history import create_chat_history
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage 
-import json
-from typing import List, Dict, Any
 
 load_dotenv()
 
@@ -17,65 +13,6 @@ GOOGLEMAPS_API_KEY = os.getenv("GOOGLEMAPS_API_KEY")
 gmaps = googlemaps.Client(key=GOOGLEMAPS_API_KEY)
 
 mcp = FastMCP("Demo")
-
-@mcp.app.get("/history/{user_id}")
-def get_user_chat_history(user_id: str) -> List[Dict[str, Any]]:
-    """
-    Fetches the chat history for a given user ID (session ID) from Astra DB.
-    """
-    try:
-        message_history = create_chat_history(session_id=user_id)
-        messages = message_history.messages
-        
-        # Serialize LangChain messages into a JSON-friendly format
-        serialized_messages = []
-        for msg in messages:
-            content = msg.content if isinstance(msg, BaseMessage) else str(msg)
-            
-            # Estimate timestamp from object metadata if available (AstraDBChatMessageHistory doesn't expose it easily)
-            # For simplicity, we'll use a placeholder date, but for a real app, AstraDB rows should store and return timestamp.
-            timestamp = "Unknown Date" 
-            
-            # Determine role
-            if isinstance(msg, HumanMessage):
-                role = "user"
-            elif isinstance(msg, AIMessage):
-                role = "assistant"
-            else:
-                role = "system"
-
-            # Create a turn object. AstraDB stores HumanMessage/AIMessage pairs
-            serialized_messages.append({
-                "role": role,
-                "content": content,
-                # In a production setting, you would retrieve the actual timestamp from the AstraDB row
-                "timestamp": timestamp, 
-                "date": datetime.now().strftime("%B %d, %Y") # Placeholder
-            })
-            
-        # Group messages into user-assistant pairs (conversational turns)
-        history_turns = []
-        for i in range(0, len(serialized_messages), 2):
-            user_msg = serialized_messages[i] if i < len(serialized_messages) else None
-            ai_msg = serialized_messages[i+1] if i + 1 < len(serialized_messages) else {"role": "assistant", "content": "No response recorded.", "date": user_msg["date"]}
-            
-            if user_msg:
-                 # Check if the next message is actually an AI message before pairing
-                if ai_msg["role"] == "assistant":
-                    history_turns.append({
-                        "id": i // 2,
-                        "date": user_msg["date"], 
-                        "question": user_msg["content"],
-                        "answer": ai_msg["content"],
-                        "tags": ["GEO", "AI"],
-                    })
-
-        return history_turns
-
-    except Exception as e:
-        print(f"Error fetching history: {e}")
-        # Return an empty list on failure
-        return []
 
 @mcp.tool()
 def add_numbers(num1: int, num2: int) -> int:
@@ -562,7 +499,6 @@ def count_nearby_buildings(latitude: float, longitude: float, radius_meters: int
 
 if __name__ == "__main__":
     import sys
-    from datetime import datetime
     # Choose transport by CLI arg: `python server.py stdio` or `python server.py http`
     # Default to stdio when run directly to match client expectations.
     arg = sys.argv[1].lower() if len(sys.argv) > 1 else "stdio"
