@@ -28,7 +28,8 @@ import GenericChart from "./charts/GenericCharts";
 import GenericLegend from "./legends/GenericLegend";
 
 import { FaUtensils, FaPlusCircle, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
-
+import { MdSchool } from "react-icons/md";
+import { IoRestaurant } from "react-icons/io5";
 import { Info } from "lucide-react";
 
 const DashboardCharts = () => {
@@ -58,9 +59,9 @@ const DashboardCharts = () => {
       <div className="bottom-12 left-2 p-2 rounded text-sm z-10">
         <strong>Map Markers:</strong>
         <ul className="mt-1 space-y-1 flex flex-col">
-          <li className="flex items-center"><FaUtensils color="red" className="mr-1"/> Restaurant</li>
-          <li className="flex items-center"><FaPlusCircle color="darkred" className="mr-1"/> Hospital</li>
-          <li className="flex items-center"><FaSchool color="green" className="mr-1"/> School</li>
+          <li className="flex items-center"><IoRestaurant color="yellow" className="mr-1"/> Restaurant</li>
+          <li className="flex items-center"><FaPlusCircle color="red" className="mr-1"/> Hospital</li>
+          <li className="flex items-center"><MdSchool color="white" className="mr-1"/> School</li>
           <li className="flex items-center"><FaUniversity color="orange" className="mr-1"/> College/University</li>
           <li className="flex items-center"><FaTree color="teal" className="mr-1"/> Park</li>
         </ul>

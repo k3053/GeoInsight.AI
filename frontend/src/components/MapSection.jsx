@@ -21,13 +21,15 @@ import GreenCoverOverlay from './map-overlays/GreenCoverOverlay';
 import GenericOverlay from './map-overlays/GenericOverlay';
 import { fetchNearbyPlaces, fetchFilterData } from './services/mapServices';
 import { FaUtensils, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
+import { MdSchool } from "react-icons/md";
+import { IoRestaurant } from "react-icons/io5";
 import { renderToStaticMarkup } from "react-dom/server";
 import L from "leaflet";
 
 const categoryIcons = {
-  restaurant: <FaUtensils color="red" size={18} />,
+  restaurant: <IoRestaurant color="darkred" size={18} />,
   // hospital: <FaHospital color="blue" size={18} />,
-  school: <FaSchool color="green" size={18} />,
+  school: <MdSchool color="black" size={18} />,
   college: <FaUniversity color="orange" size={18} />,
   university: <FaUniversity color="orange" size={18} />,
   park: <FaTree color="teal" size={18} />,
