@@ -101,7 +101,7 @@ export default function WeatherCharts({ weather }) {
               className="inline-block w-3 h-3 mr-1"
               style={{ backgroundColor: li.color }}
             ></span>
-            <span className="text-xs">{li.label}</span>
+            <span className="text-sm">{li.label}</span>
           </div>
         ))}
       </div>
@@ -123,8 +123,8 @@ export default function WeatherCharts({ weather }) {
 
   return (
     <div className="p-2 rounded shadow bg-opacity-90 z-40 min-w-[220px]">
-      <div className="font-bold mb-1">Weather Overview</div>
-      <div className="mb-2 text-xs">
+      <div className="font-bold mb-1 text-lg">Weather Overview</div>
+      <div className="mb-2 text-md">
         <div>
           Temp: {Math.round(temp)}°C; Feels Like: {Math.round(feels_like)}°C
         </div>
@@ -135,7 +135,7 @@ export default function WeatherCharts({ weather }) {
       <div className="space-y-2">
         {barData.map((item, idx) => (
           <div key={idx} className="mb-3">
-            <div className="mb-1 text-xs">
+            <div className="mb-1 text-md">
               {item.label}: <b>{Math.round(item.value)}</b>
             </div>
             <div className="w-full bg-gray-200 rounded h-2">
@@ -155,7 +155,7 @@ export default function WeatherCharts({ weather }) {
       {/* Hourly Forecast Line Chart */}
       {hourlyData.length > 0 && (
         <div className="mt-4">
-          <div className="font-bold mb-1">Hourly Forecast (°C)</div>
+          <div className="font-bold mb-1 text-lg">Hourly Forecast (°C)</div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={hourlyData} margin={{ top: 5, right: 40, left: -30, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />

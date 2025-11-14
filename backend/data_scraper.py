@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import re
 import logging
 from typing import Dict, Any
+from urllib.parse import urlparse
 
 # Utility: clean numeric values
 def _to_number(s: str):
@@ -31,6 +32,19 @@ def _search_google(query: str) -> str:
     except Exception as e:
         logging.warning(f"Search failed for {query}: {e}")
     return None
+
+def _normalize_url(link: str) -> str:
+    if not link:
+        return link
+    link = link.strip()
+    # //example.com/path  -> https://example.com/path
+    if link.startswith("//"):
+        return "https:" + link
+    # missing scheme (e.g. example.com/path) -> add https://
+    parsed = urlparse(link)
+    if not parsed.scheme:
+        return "https://" + link
+    return link
 
 def fetch_aqi(city_name: str) -> Dict[str, Any]:
     """
@@ -68,18 +82,28 @@ def fetch_crime_data(city_name: str) -> Dict[str, Any]:
     link = _search_google(f"{city_name} crime rate site:numbeo.com")
     if not link:
         return {"error": "No source found"}
-    r = requests.get(link, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-    soup = BeautifulSoup(r.text, "html.parser")
+    # when you get 'link' from search/scrape, normalize it:
+    try:
+        link = _normalize_url(link)
+        r = requests.get(link, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        soup = BeautifulSoup(r.text, "html.parser")
 
-    text = soup.get_text(" ", strip=True)
-    m = re.search(r"Crime\s+Index\s*([0-9]+)", text)
-    safety = re.search(r"Safety\s+Index\s*([0-9]+)", text)
+        text = soup.get_text(" ", strip=True)
+        m = re.search(r"Crime\s+Index\s*([0-9]+)", text)
+        safety = re.search(r"Safety\s+Index\s*([0-9]+)", text)
 
-    return {
-        "crime_index": _to_number(m.group(1)) if m else None,
-        "safety_index": _to_number(safety.group(1)) if safety else None,
-        "source": link
-    }
+        return {
+            "crime_index": _to_number(m.group(1)) if m else None,
+            "safety_index": _to_number(safety.group(1)) if safety else None,
+            "source": link
+        }
+    except requests.exceptions.RequestException as e:
+        # handle network/HTTP errors gracefully
+        logging.exception("fetch_crime_data request failed")
+        return {"error": "network", "detail": str(e)}
+    except Exception as e:
+        logging.error(f"Crime data fetch failed: {e}")
+        return {"error": str(e)}
 
 def fetch_ndvi(city_name: str) -> Dict[str, Any]:
     """

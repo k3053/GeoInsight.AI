@@ -317,76 +317,114 @@ def parse_solar(text: str) -> Dict[str, Any]:
 
     return insights
 
-def parse_agent_response(text: str, filter_name: str = None) -> Dict[str, Any]:
+def simplify_json(js: dict, clean_text: str) -> dict:
     """
-    Returns dict with:
-     - clean_text: markdown stripped text
-     - extracted_json: any JSON objects parsed from code blocks
-     - extracted_urls: list of referenced urls
-     - numeric_values: list of {raw, value, unit}
-     - time_series: list of {date, value, unit}
-     - breakdowns: any parsed categorical breakdowns (best-effort)
-     - filter_specific: object with heuristic fields (e.g., solar metrics)
+    Converts complex JSON from LLM into SIMPLE NDVI format.
     """
-    text = text or ""
-    clean_text, extracted_json, extracted_urls = _strip_markdown(text)
 
-    # If the agent returned a JSON object, prefer parsing that as source of truth
-    parsed_from_json: Optional[Dict[str, Any]] = None
-    if extracted_json:
-        # pick first JSON object that looks like insights or a dict
-        for j in extracted_json:
-            if isinstance(j, dict):
-                parsed_from_json = j
+    # 1. Latitude & longitude
+    lat = js.get("latitude")
+    lon = js.get("longitude")
+
+    # 2. bounding box
+    bbox = js.get("bounding_box")
+
+    # 3. Simplify years structure
+    years = {}
+    if "years" in js:
+        for year, obj in js["years"].items():
+            if isinstance(obj, dict):
+                # pick average_ndvi → numeric
+                avg = obj.get("average_ndvi")
+                if isinstance(avg, (int, float)):
+                    years[year] = avg
+
+    # 4. Simplify data → single value
+    data_val = None
+    if isinstance(js.get("data"), dict):
+        # choose any numeric field
+        for k, v in js["data"].items():
+            if isinstance(v, (int, float)):
+                data_val = v
                 break
 
-    try:
-        # try to extract JSON first
-        numeric_insight = extract_numbers_with_units(clean_text)
-    except ValueError:
-        # fallback to regex-based numeric extraction
-        numeric_insight = extract_labeled_numbers(clean_text)
+    # 5. summary
+    summary = js.get("summary") or clean_text[:200]
 
-    time_series = extract_time_series(clean_text)
-
-    result: Dict[str, Any] = {
-        "clean_text": clean_text,
-        "extracted_urls": extracted_urls,
-        "numeric_insights": numeric_insight,
-        "time_series": time_series,
-        "breakdowns": [],
-        "filter_specific": {}
+    return {
+        "latitude": lat,
+        "longitude": lon,
+        "bounding_box": bbox,
+        "years": years,
+        "data": data_val,
+        "dataset": js.get("dataset"),
+        "source": js.get("source"),
+        "summary": summary
     }
 
-    # If JSON contained structured insights, merge/return it under parsed_insights
-    if parsed_from_json:
-        # simple merging strategy: keep parsed JSON as 'parsed_insights'
-        result["parsed_insights"] = parsed_from_json
+def parse_agent_response(text: str, filter_name: str = None) -> Dict[str, Any]:
+    """
+    Parses any agent response and returns a SIMPLE FilterInsight JSON:
+    {
+       latitude: float,
+       longitude: float,
+       bounding_box: [...],
+       years: { "2020": 0.32, "2021": 0.35, ... },
+       data: float,
+       dataset: str,
+       source: str,
+       summary: str
+    }
+    """
 
-    if filter_name:
-        fn = filter_name.lower()
-        if "solar" in fn:
-            result["filter_specific"] = parse_solar(clean_text)
-        elif "air quality" in fn or "air" == fn:
-            result["filter_specific"] = parse_aqi(clean_text)
-        elif "precipitation" in fn or "rain" in fn or "snow" in fn:
-            result["filter_specific"] = parse_precipitation(clean_text)
-        elif "crime" in fn or "safety" in fn:
-            result["filter_specific"] = parse_crime_rate(clean_text)
-        elif "ndvi" in fn or "vegetation" in fn:
-            result["filter_specific"] = parse_ndvi(clean_text)
-        else:
-            result["filter_specific"] = {}
+    text = text or ""
+    clean_text, extracted_json, _ = _strip_markdown(text)
 
-    # best-effort breakdown extraction (simple category: value pairs)
-    cat_re = re.compile(r"([A-Za-z &\/\-]{3,50})[:\s]+([\d,]+(?:\.\d+)?)", re.IGNORECASE)
-    breakdown = {}
-    for m in cat_re.finditer(clean_text):
-        key = m.group(1).strip()
-        val = _to_number(m.group(2))
-        if key and val is not None:
-            breakdown[key] = val
-    if breakdown:
-        result["breakdowns"] = breakdown
+    # ------------------------------------------------------------------
+    # 1) If LLM already returned JSON → simplify it
+    # ------------------------------------------------------------------
+    if extracted_json:
+        for js in extracted_json:
+            if isinstance(js, dict):
+                return simplify_json(js, clean_text)
 
-    return result
+    # ------------------------------------------------------------------
+    # 2) Extract numbers for fallback
+    # ------------------------------------------------------------------
+    try:
+        numeric = extract_numbers_with_units(clean_text)
+    except:
+        numeric = extract_labeled_numbers(clean_text)
+
+    # choose single value for "data"
+    main_value = None
+    if numeric and isinstance(numeric, list):
+        for n in numeric:
+            if isinstance(n.get("value"), (int, float)):
+                main_value = float(n["value"])
+                break
+
+    # ------------------------------------------------------------------
+    # 3) Extract any year:value pairs from text
+    # ------------------------------------------------------------------
+    year_re = re.compile(r"(20\d{2})\D+([0-1]\.\d+|\d\.\d+|\d+)", re.IGNORECASE)
+    years = {}
+    for y, v in year_re.findall(clean_text):
+        try:
+            years[y] = float(v)
+        except:
+            pass
+
+    # ------------------------------------------------------------------
+    # 4) Fallback simple JSON
+    # ------------------------------------------------------------------
+    return {
+        "latitude": None,
+        "longitude": None,
+        "bounding_box": None,
+        "years": years,
+        "data": main_value,
+        "dataset": filter_name,
+        "source": "agent_fallback",
+        "summary": clean_text[:200]
+    }

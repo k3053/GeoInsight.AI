@@ -7,11 +7,11 @@ const PrecipitationLegend = ({ precipitation }) => {
   // const max = raw.max_mm ?? raw.peak_mm ?? null;
 
   return (
-    <div className="mb-4 p-3 bg-gray-800 rounded text-sm">
+    <div className="mb-4 p-3 bg-gray-800 rounded text-md">
       <h3 className="font-semibold mb-2">Precipitation</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-gray-400">Total</p>
+          <p className="text-sm text-gray-400">Total</p>
           <div className="text-lg font-medium">{total != null ? `${total} mm` : "N/A"}</div>
         </div>
         {/* <div>

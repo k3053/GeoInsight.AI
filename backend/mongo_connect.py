@@ -1,10 +1,14 @@
 from pymongo import MongoClient, UpdateOne
+import certifi
 from datetime import datetime
 from bson import ObjectId
 import json, os
 
 MONGODB_URI = os.getenv("MONGO_URI")
-client = MongoClient(MONGODB_URI)
+client = MongoClient(
+    MONGODB_URI
+)
+print("MONGO Connection Info:-", client.server_info())
 db = client.geoinsight
 
 

@@ -51,6 +51,7 @@ const GenericCharts = ({ data, filterName }) => {
 
   // Show summary if available
   const summaryText = stats?.summary ?? norm?.summary ?? null;
+  const filterInfo = stats?.info_of_filter ?? norm?.info_of_filter ?? null;
 
   // Years series takes precedence (line chart)
   const yearsSeries = toYearsSeries(stats?.years ?? norm?.years ?? norm?.stats?.years);
@@ -69,7 +70,7 @@ const GenericCharts = ({ data, filterName }) => {
     return (
       <div className="p-3">
         {summaryText && (
-          <div className="mb-3 bg-gray-800 p-3 rounded text-sm">
+          <div className="mb-3 bg-gray-800 p-3 rounded text-lg">
             <div className="font-medium">Summary</div>
             <div className="mt-1">{String(summaryText)}</div>
           </div>
@@ -81,8 +82,16 @@ const GenericCharts = ({ data, filterName }) => {
 
   return (
     <div className="space-y-4 p-3">
+
+      {filterInfo && (
+        <div className="bg-gray-800 p-3 rounded text-lg">
+          <div className="font-medium mb-1">Filter Information</div>
+          <div>{String(filterInfo)}</div>
+        </div>
+      )}
+      
       {summaryText && (
-        <div className="bg-gray-800 p-3 rounded text-sm">
+        <div className="bg-gray-800 p-3 rounded text-lg">
           <div className="font-medium mb-1">Summary</div>
           <div>{String(summaryText)}</div>
         </div>
@@ -103,7 +112,7 @@ const GenericCharts = ({ data, filterName }) => {
         </div>
       )}
 
-      {ts.length > 0 && yearsSeries.length === 0 && (
+      {ts.length > 0 && yearsSeries.length <= 0 && (
         <div className="w-full" style={{ height: 300 }}>
           <div className="font-semibold mb-2">Time Series</div>
           <ResponsiveContainer width="100%" height="100%">
@@ -148,7 +157,7 @@ const GenericCharts = ({ data, filterName }) => {
         </div>
       )}
 
-      {currentValue != null && !categories && !ts.length && !yearsSeries.length && (
+      {/* {currentValue != null && !categories && !ts.length && !yearsSeries.length && (
         <div className="bg-gray-800 p-3 rounded text-sm">
           <div className="font-medium mb-1">Current</div>
           <div className="text-2xl font-semibold">{Number(currentValue).toLocaleString()}</div>
@@ -160,7 +169,7 @@ const GenericCharts = ({ data, filterName }) => {
           <div className="font-medium mb-1">Current</div>
           <div className="text-xl font-semibold">{Number(currentValue).toLocaleString()}</div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

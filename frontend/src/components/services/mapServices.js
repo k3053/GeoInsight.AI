@@ -2,6 +2,7 @@ const VITE_API_WEATHER_KEY = import.meta.env.VITE_API_WEATHER_KEY;
 const VITE_AQICN_TOKEN = import.meta.env.VITE_AQICN_TOKEN;
 const VITE_API_WEATHER_FORECAST = import.meta.env.VITE_API_WEATHER_FORECAST;
 const VITE_OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
+const VITE_SOLAR_API_KEY = import.meta.env.VITE_SOLAR_API_KEY;
 
 export const fetchNearbyPlaces = async (lat, lon, radius = 5000) => {
     try {
@@ -51,67 +52,66 @@ export const fetchNearbyPlaces = async (lat, lon, radius = 5000) => {
 export const fetchFilterData = async (filter, position) => {
   const [lat, lng] = position;
   let data = null;
+  console.log("Selected Filter------>>>>>", filter);
 
   switch (filter) {
-    case "Solar": {
-        const lat = position[0];
-        const lon = position[1];
+    // case "Solar": {
+    //     const lat = position[0];
+    //     const lon = position[1];
         
-        // Get current date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0];
-        
-        // First create a location
-        const locationResponse = await fetch(
-            'https://solar.googleapis.com/v1/buildingInsights:findClosest?key=YOUR_API_KEY',
-            {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                lat,
-                lon,
-                appid: VITE_OPENWEATHER_API_KEY
-            })
-            }
-        );
-        
-        const locationData = await locationResponse.json();
-        const locationId = locationData.id;
+    //     try {
+    //         // Call Google Solar API to get building insights
+    //         const solarResponse = await fetch(
+    //             `https://solar.googleapis.com/v1/buildingInsights:findClosest?location.latitude=${lat}&location.longitude=${lon}&requiredQuality=HIGH&key=${VITE_SOLAR_API_KEY}`,
+    //             {
+    //                 method: 'GET',
+    //                 headers: {
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             }
+    //         );
 
-        // Then fetch solar data for the location
-        const solarResponse = await fetch(
-            `https://api.openweathermap.org/energy/1.0/location/${locationId}/data?date=${today}&appid=${VITE_OPENWEATHER_API_KEY}`,
-            {
-                mode: 'no-cors',
-                headers: {
-                 "Content-Type": "application/json"
-                }
-            }
-        );
-        
-        const solarData = await solarResponse.json();
-        
-        // Transform the data for our charts
-        const hourlyData = solarData.hourly.map(hour => ({
-            hour: new Date(hour.dt * 1000).getHours(),
-            radiation: hour.ghi, // Global Horizontal Irradiance
-        }));
+    //         if (!solarResponse.ok) {
+    //             const errText = await solarResponse.text().catch(() => "");
+    //             console.error(`Solar API returned ${solarResponse.status}:`, errText);
+    //             return null;
+    //         }
 
-        // Calculate daily average and peak hours
-        const dailyAverage = hourlyData.reduce((sum, hour) => sum + hour.radiation, 0) / hourlyData.length;
-        const peakHours = hourlyData.filter(hour => hour.radiation > 0.5 * Math.max(...hourlyData.map(h => h.radiation))).length;
+    //         const solarData = await solarResponse.json();
+    //         console.log("Solar data from Google API:", solarData);
 
-        data = {
-            solar: {
-            dailyAverage: parseFloat(dailyAverage.toFixed(2)),
-            peakHours,
-            hourlyData,
-            raw: solarData // Keep raw data for additional use if needed
-            }
-        };
-        break;
-    }
+    //         // Extract key metrics from solarPotential
+    //         const potential = solarData.solarPotential || {};
+    //         const wholeRoof = potential.wholeRoofStats || {};
+            
+    //         // Calculate metrics
+    //         const maxPanels = potential.maxArrayPanelsCount || 0;
+    //         const maxArea = potential.maxArrayAreaMeters2 || 0;
+    //         const sunshineHours = potential.maxSunshineHoursPerYear || 0;
+    //         const carbonOffset = potential.carbonOffsetFactorKgPerMwh || 0;
+    //         const sunshineQuantiles = wholeRoof.sunshineQuantiles || [];
+            
+    //         data = {
+    //             solar: {
+    //                 maxPanels,
+    //                 maxAreaM2: parseFloat(maxArea.toFixed(2)),
+    //                 sunshineHoursPerYear: sunshineHours,
+    //                 carbonOffsetKgPerMwh: parseFloat(carbonOffset.toFixed(2)),
+    //                 roofAreaM2: parseFloat((wholeRoof.areaMeters2 || 0).toFixed(2)),
+    //                 groundAreaM2: parseFloat((wholeRoof.groundAreaMeters2 || 0).toFixed(2)),
+    //                 sunshineQuantiles: sunshineQuantiles,
+    //                 imageryDate: solarData.imageryDate || {},
+    //                 imageryQuality: solarData.imageryQuality || "UNKNOWN",
+    //                 center: solarData.center || { latitude: lat, longitude: lon },
+    //                 raw: solarData
+    //             }
+    //         };
+    //     } catch (error) {
+    //         console.error("Solar API fetch error:", error);
+    //         return null;
+    //     }
+    //     break;
+    // }
     case "Weather Forecast": {
         const lat = position[0];
         const lon = position[1];
@@ -178,6 +178,19 @@ export const fetchFilterData = async (filter, position) => {
         data = { totalBuildings: buildingsData.totalBuildings, points: buildingsData };
         break;
     }     
+    case "Distance to Nearest Amenities": {
+        const lat = position[0];
+        const lng = position[1];
+        if (lat == null || lng == null) {
+        console.error("Missing coordinates for buildings API call");
+        break;
+        }
+        const buildingsResponse = await fetch(`http://127.0.0.1:8000/data/amenities?latitude=${lat}&longitude=${lng}`);
+        const buildingsData = await buildingsResponse.json();
+        console.log("Buildings data from local API ===>>> \n", buildingsData);
+        data = { totalBuildings: buildingsData.totalBuildings, points: buildingsData };
+        break;
+    }   
     default:{
       try {
         const baseUrl = "http://localhost:8000/chat/filter";

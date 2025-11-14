@@ -87,7 +87,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
 
-const COLORS = ["#42A5F5", "#90CAF9", "#66BB6A", "#FFA726", "#F4511E", "#E53935", "#8E24AA", "#3949AB"];
+const COLORS = [
+  "#42A5F5", "#90CAF9", "#66BB6A", "#FFA726",
+  "#F4511E", "#E53935", "#8E24AA", "#3949AB"
+];
 
 // Helper function to shorten labels
 const shortenType = (type) => {
@@ -101,54 +104,90 @@ const shortenType = (type) => {
 };
 
 export default function BuildingCharts({ stats }) {
-  // Ensure that points is an array (if not, fallback to an empty array)
-  const points = stats?.totals?.points?.points;
-  console.log("points:", stats);
-  
-  // Build frequency map by building type (defaulting to "unknown" if missing)
-  // Re-aggregate using shortenType for the building type keys.
-  const typeMap = {};
-  points?.forEach(point => {
-    const rawType = point && point.type ? point.type : "unknown";
-    const type = shortenType(rawType);
-    typeMap[type] = (typeMap[type] || 0) + 1;
-  });
-  console.log("typeMap:", typeMap);
-  
-  // Convert the frequency map into an array for charts
-  const typeData = Object.keys(typeMap).map(key => ({
-    type: key,
-    count: typeMap[key]
+  // Extract possible data from backend
+  const points = stats?.totals?.points?.points || [];
+  const buildingTypeCounts = stats?.totals?.points?.buildingTypeCounts || {};
+  let totalBuildings = stats?.totals?.points?.totalBuildings || 0;
+
+  console.log("Incoming stats:", stats?.totals);
+
+  // Case 1: If backend already gave `buildingTypeCounts`
+  let typeCounts = buildingTypeCounts;
+
+  // Case 2: Derive manually if needed
+  if (!typeCounts || Object.keys(typeCounts).length === 0) {
+    typeCounts = points.reduce((acc, item) => {
+      const type = item?.type || "unknown";
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  // Compute total buildings if not provided
+  if (!totalBuildings || totalBuildings === 0) {
+    totalBuildings = points.length || Object.values(typeCounts).reduce((a, b) => a + b, 0);
+  }
+
+  // Convert typeCounts object → array
+  const typeData = Object.entries(typeCounts).map(([type, count]) => ({
+    type: shortenType(type),
+    count,
   }));
-  console.log("typeData:", typeData);
-  
-  // Prepare pie chart data
-  const pieData = typeData.map(item => ({
-    name: item.type,
-    value: item.count
+
+  // Prepare Pie data
+  const pieData = typeData.map((d) => ({
+    name: d.type,
+    value: d.count,
   }));
-  
-  // If no data is found, display a fallback message
-  if (typeData.length === 0) {
+
+  // 🧭 Sort buildings by proximity
+  const nearestBuildings = [...points]
+    .filter((p) => p?.distance_m !== undefined)
+    .sort((a, b) => a.distance_m - b.distance_m)
+    .slice(0, 5); // top 5 closest
+
+  // Handle no valid data
+  if (totalBuildings === 0 || typeData.length === 0) {
     return (
       <div className="card-glass p-4">
-        <h2 className="text-lg font-semibold mb-2">Building Types Distribution Analysis</h2>
-        <p className="text-xs text-gray-400 mt-2">No valid building type data available.</p>
+        <h2 className="text-lg font-semibold mb-2">
+          Building Types Distribution Analysis
+        </h2>
+        <p className="text-xs text-gray-400 mt-2">
+          No valid building data available.
+        </p>
       </div>
     );
   }
-  
+
   return (
     <div className="card-glass p-4">
-      <h2 className="text-lg font-semibold mb-2">Building Types Distribution Analysis</h2>
-      <div className="grid md:grid-rows-2 gap-6">
+      <h2 className="text-lg font-semibold mb-2">
+        Building Types Distribution Analysis
+      </h2>
+
+      {/* Display total building count */}
+      <p className="text-xl text-gray-200 mb-6">
+        Total Buildings Detected:{" "}
+        <span className="font-bold text-[var(--theme-primary)]">
+          {totalBuildings}
+        </span>
+      </p>
+
+      <div className="flex flex-col gap-12">
         {/* Pie Chart */}
-        <div>
-          <p className="text-xl text-gray-200 mt-2">
-            Proportion of each detected building type:
+        <div className="flex flex-col items-center">
+          <p className="text-lg text-gray-200 mb-2 font-semibold">
+            Proportion of Each Building Type
           </p>
-          <PieChart width={400} height={350}>
-            <Pie data={pieData} dataKey="value" nameKey="name" outerRadius={100} label>
+          <PieChart width={380} height={320}>
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              outerRadius={100}
+              label
+            >
               {pieData.map((entry, idx) => (
                 <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
               ))}
@@ -156,36 +195,63 @@ export default function BuildingCharts({ stats }) {
             <Tooltip />
             <Legend verticalAlign="bottom" height={36} />
           </PieChart>
-          
         </div>
-        
+
         {/* Bar Chart */}
-        <div>
-          <p className="text-xl text-gray-200 mt-2">
-            Count of each building type.
+        <div className="flex flex-col items-center">
+          <p className="text-lg text-gray-200 mb-2 font-semibold">
+            Count of Each Building Type
           </p>
-            <BarChart
-              width={400}
-              height={420}
-              data={typeData}
-              margin={{ top: 20, right: 20, bottom: 20, left: -25 }}
-            >
-              {/* Rotate the XAxis tick labels  -45 degrees, show all labels */}
-              <XAxis
-                dataKey="type"
-                tick={{ fontSize: 16, angle: -30, textAnchor: "end" }}
-                interval={0}
-              />
-              <YAxis tick={{ fontSize: 16 }} />
-              <CartesianGrid strokeDasharray="3 3" />
-              <Tooltip />
-              <Bar dataKey="count">
-                {typeData.map((entry, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
+          <BarChart
+            width={380}
+            height={320}
+            data={typeData}
+            margin={{ top: 20, right: 20, bottom: 40, left: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="type"
+              tick={{
+                fontSize: 16,
+                angle: -30,
+                textAnchor: "end",
+                fill: "#FFFFFF",
+              }}
+              interval={0}
+            />
+            <YAxis tick={{ fontSize: 16, fill: "#FFFFFF" }} />
+            <Tooltip />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+              {typeData.map((entry, idx) => (
+                <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
         </div>
+
+        {/* Nearby Buildings Section */}
+        {nearestBuildings.length > 0 && (
+          <div>
+            <p className="text-lg text-gray-200 mb-3 font-semibold">
+              Nearby Amenities (Closest {nearestBuildings.length})
+            </p>
+            <ul className="text-gray-300 text-lg space-y-2">
+              {nearestBuildings.map((b, idx) => (
+                <li key={idx} className="flex justify-between border-b border-gray-600 pb-1">
+                  <span>
+                    {b.name || "Unnamed Building"}{" "}
+                    <span className="text-gray-500 text-xs">
+                      ({shortenType(b.type)})
+                    </span>
+                  </span>
+                  <span className="font-semibold text-[var(--theme-primary)]">
+                    {b.distance_m.toFixed(0)} m
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

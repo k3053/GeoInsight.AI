@@ -5,7 +5,6 @@ from mcp.client.streamable_http import streamablehttp_client
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.checkpoint.memory import InMemorySaver
 import asyncio
 import os
 import sys
@@ -113,8 +112,8 @@ async def run_agent(message: str, session_id: str = "test-session", latitude: fl
             processed_response = _extract_final_response(agent_response)
 
             # Persist the turn to chat history
-            chat_history.add_user_message(message)
-            if processed_response["text"]:
-                chat_history.add_ai_message(processed_response["text"])
+            # chat_history.add_user_message(message)
+            # if processed_response["text"]:
+            #     chat_history.add_ai_message(processed_response["text"])
 
             return processed_response

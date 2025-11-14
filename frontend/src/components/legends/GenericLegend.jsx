@@ -9,7 +9,7 @@ const GenericLegend = ({ data, title }) => {
   const rawForNorm = stats.data ?? stats.raw ?? stats;
   const norm = normalizeFilterResponse(rawForNorm || {});
 
-  const summaryText = stats.summary ?? (stats.raw && stats.raw.summary) ?? null;
+  // const summaryText = stats.summary ?? (stats.raw && stats.raw.summary) ?? null;
 
   // derive a single "current" metric to display (works for numbers and common object shapes)
   const currentValue = (() => {
@@ -40,38 +40,38 @@ const GenericLegend = ({ data, title }) => {
     <div className="mb-4 p-3 bg-gray-800 rounded text-sm">
       <h3 className="font-semibold mb-2">{title || "Info"}</h3>
 
-      {summaryText && (
+      {/* {summaryText && (
         <div className="mb-3 text-sm text-gray-300">
           <div className="font-medium">Summary</div>
           <div className="mt-1">{String(summaryText)}</div>
         </div>
-      )}
+      )} */}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-gray-400">Current</p>
+          <p className="text-sm text-gray-400">Current</p>
           <div className="text-lg font-medium">
             {currentValue != null ? `${Number(currentValue).toLocaleString()}${unit ? ` ${unit}` : ""}` : "N/A"}
           </div>
         </div>
 
         <div>
-          <p className="text-xs text-gray-400">Geometry</p>
+          <p className="text-sm text-gray-400">Geometry</p>
           <div className="text-lg font-medium">{norm.geojson ? "GeoJSON" : (norm.points?.length ? `Points (${norm.points.length})` : "None")}</div>
         </div>
 
         <div>
-          <p className="text-xs text-gray-400">Time series</p>
+          <p className="text-sm text-gray-400">Time series</p>
           <div className="text-lg font-medium">{(norm.time_series?.length ?? 0) || "N/A"}</div>
         </div>
 
         <div>
-          <p className="text-xs text-gray-400">Categories</p>
+          <p className="text-sm text-gray-400">Categories</p>
           <div className="text-lg font-medium">{(norm.categories?.length ?? 0) || "N/A"}</div>
         </div>
 
         <div className="col-span-2">
-          <p className="text-xs text-gray-400">Source</p>
+          <p className="text-sm text-gray-400">Source</p>
           <div className="text-lg font-medium">
             {(stats.raw && (stats.raw.source || stats.raw.provider)) || (data.raw && (data.raw.source || data.raw.provider)) || "Agent/Backend"}
           </div>

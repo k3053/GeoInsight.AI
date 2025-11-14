@@ -24,7 +24,7 @@ const AQILegend = () => {
   });
   
   return (
-    <div className="mb-4 text-sm ml-5">
+    <div className="mb-4 text-lg ml-5">
       <p className="font-semibold">Legend (AQI Intervals):</p>
       <ul className="mt-3 space-y-1">
         {legendItems.map((item, idx) => (

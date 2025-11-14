@@ -15,14 +15,13 @@ gmaps = googlemaps.Client(key=GOOGLEMAPS_API_KEY)
 mcp = FastMCP("Demo")
 
 @mcp.tool()
-def add_numbers(num1: int, num2: int) -> int:
-    """Adds two numbers"""
+def add(num1: int, num2: int):
     return num1 + num2
-
 
 @mcp.tool()
 def web_search(query: str):
     """This tool does the web search using the users query"""
+    logger.info("CALLING TOOL: WEB SEARCH")
     search = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
     response = search.run(query)
     return response
@@ -53,7 +52,7 @@ def get_air_quality(latitude, longitude):
         response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
         data = response.json()
-        
+
         # Save to MongoDB
         query_params = {"latitude": latitude, "longitude": longitude}
         save_to_mongodb("air_quality", data, query_params)

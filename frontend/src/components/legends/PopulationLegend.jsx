@@ -8,11 +8,11 @@ const PopulationLegend = ({ population }) => {
   // const density = raw.density_per_km2 ?? population?.density ?? null;
 
   return (
-    <div className="mb-4 p-3 bg-gray-800 rounded text-sm">
+    <div className="mb-4 p-3 bg-gray-800 rounded text-lg">
       <h3 className="font-semibold mb-2">Temporal Population</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs text-gray-400">Current</p>
+          <p className="text-sm text-gray-400">Current</p>
           <div className="text-lg font-medium">{current != null ? current.toLocaleString() : "N/A"}</div>
         </div>
         {/* <div>

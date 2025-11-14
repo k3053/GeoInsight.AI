@@ -126,21 +126,25 @@ const MapSection = ({ searchQuery, searchTrigger, onLocationSelect, locationFrom
 
   // Data fetching effect for selectedFilter and selectedPos.
   useEffect(() => {
-    if (!selectedFilter || !position) return;
+  if (!selectedFilter || !position) return;
 
-    const getFilterData = async () => {
+  const getFilterData = async () => {
       setIsLoading(true);
+      window.dispatchEvent(new CustomEvent("mapLoading", { detail: { loading: true } }));
+
       try {
         const data = await fetchFilterData(selectedFilter, position);
         setFilterData(data);
-        // Dispatch event for dashboard
+
+        // Dispatch event for dashboard update
         window.dispatchEvent(
-          new CustomEvent('mapStatsUpdated', { detail: { totals: data } })
+          new CustomEvent("mapStatsUpdated", { detail: { totals: data } })
         );
       } catch (error) {
-        console.error('Error fetching filter data:', error);
+        console.error("Error fetching filter data:", error);
       } finally {
         setIsLoading(false);
+        window.dispatchEvent(new CustomEvent("mapLoading", { detail: { loading: false } }));
       }
     };
 

@@ -6,7 +6,7 @@ import AQICharts from "./charts/AQICharts";
 import BuildingCharts from "./charts/BuildingCharts";
 import ElevationCharts from "./charts/ElevationCharts";
 import WeatherCharts from "./charts/WeatherCharts";
-import SolarCharts from "./charts/SolarCharts";
+import AmenityCharts from "./charts/NearestAmenityCharts";
 import NDVICharts from "./charts/NDVICharts";
 import PrecipitationCharts from "./charts/PrecipitationCharts";
 import PopulationCharts from "./charts/PopulationCharts";
@@ -17,17 +17,17 @@ import AQILegend from "./legends/AQILegend";
 import BuildingLegend from "./legends/BuildingLegend";
 import ElevationLegend from "./legends/ElevationLegend";
 import WeatherLegend from "./legends/WeatherLegend";
-import SolarLegend from "./legends/SolarLegend";
 import NDVILegend from "./legends/NDVILegend";
 import PrecipitationLegend from "./legends/PrecipitationLegend";
 import PopulationLegend from "./legends/PopulationLegend";
 import GreenCoverLegend from "./legends/GreenCoverLegend";
+import AmenityLegend from "./legends/AmenityLegend";
 
 // Import generic components for other filters
 import GenericChart from "./charts/GenericCharts";
 import GenericLegend from "./legends/GenericLegend";
 
-import { FaUtensils, FaPlusCircle, FaSchool, FaUniversity, FaTree } from "react-icons/fa";
+import { FaPlusCircle, FaUniversity, FaTree } from "react-icons/fa";
 import { MdSchool } from "react-icons/md";
 import { IoRestaurant } from "react-icons/io5";
 import { Info } from "lucide-react";
@@ -35,14 +35,28 @@ import { Info } from "lucide-react";
 const DashboardCharts = () => {
   const selectedFilter = useSelector((state) => state.dashboard.selectedFilter);
   const [stats, setStats] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const statsHandler = (e) => setStats(e.detail);
+    const loadingHandler = (e) => setIsLoading(e.detail.loading);
+
+    window.addEventListener("mapStatsUpdated", statsHandler);
+    window.addEventListener("mapLoading", loadingHandler);
+
+    return () => {
+      window.removeEventListener("mapStatsUpdated", statsHandler);
+      window.removeEventListener("mapLoading", loadingHandler);
+    };
+  }, []);
 
   // Listen for map stats events from MapSection
-  useEffect(() => {
-    const handler = (e) => setStats(e.detail);
-    console.log("In Dashboard Charts==> ", stats);
-    window.addEventListener("mapStatsUpdated", handler);
-    return () => window.removeEventListener("mapStatsUpdated", handler);
-  }, []);
+  // useEffect(() => {
+  //   const handler = (e) => setStats(e.detail);
+  //   console.log("In Dashboard Charts==> ", stats);
+  //   window.addEventListener("mapStatsUpdated", handler);
+  //   return () => window.removeEventListener("mapStatsUpdated", handler);
+  // }, []);
 
   // Content for when a filter is selected but no data is available yet
   const LoadingOrNoData = () => (
@@ -76,12 +90,14 @@ const DashboardCharts = () => {
 
   // Helper to render the correct content based on the state
   const renderContent = () => {
-    if (!selectedFilter) {
-      return <NoFilterSelected />;
-    }
-    if (!stats) {
-      return <LoadingOrNoData />;
-    }
+    if (!selectedFilter) return <NoFilterSelected />;
+
+    // Always show loading if in progress (even if stats exist)
+    if (isLoading) return <LoadingOrNoData />;
+
+    // Show waiting message if no data yet (after loading)
+    if (!stats) return <LoadingOrNoData />;
+
 
     switch (selectedFilter) {
       // case "Elevation":
@@ -131,19 +147,21 @@ const DashboardCharts = () => {
             <ElevationCharts stats={stats} />
           </>
         );
-        case "Solar":
-        return (
-          <>
-            <SolarLegend solar={stats?.totals?.solar} />
-            <SolarCharts stats={stats} />
-          </>
-        );
+        // case "Solar":
+        // return (
+        //   <>
+        //     <SolarLegend solar={stats?.totals?.solar} />
+        //     <SolarCharts stats={stats} />
+        //   </>
+        // );
         case "Vegetation Index(NDVI)":
           return (
-            <>
-              <NDVILegend ndvi={stats?.totals?.insights} />
-              <NDVICharts stats={stats?.totals?.insights} />
-            </>
+            stats && (
+              <>
+                <NDVILegend ndvi={stats?.totals?.insights} />
+                <NDVICharts stats={stats?.totals?.insights} />
+              </>
+            )
           );
         case "Precipitation Levels":
           return (
@@ -166,6 +184,13 @@ const DashboardCharts = () => {
               <GreenCoverCharts stats={stats?.totals?.insights} />
             </>
           );
+        case "Distance to Nearest Amenities":
+          return(
+            <>
+              <AmenityLegend/>
+              <AmenityCharts stats={stats} />
+            </>
+          )
         // Generic components for remaining filters
         case "Land Use/Land Cover":
         case "Building Segmentation":
@@ -175,9 +200,9 @@ const DashboardCharts = () => {
         case "Water Quality Index":
         case "Crime Rate/Safety Index":
         case "Property Value Trends":
-        case "Distance to Nearest Amenities":
         case "Property Development Potential":
         case "Land Price":
+        case "Solar":
           return (
             <>
               <GenericLegend 
@@ -197,12 +222,12 @@ const DashboardCharts = () => {
 
   return (
     <div className="flex flex-col h-full p-6">
-      <h2 className="text-2xl font-bold text-[var(--theme-primary)] mb-4 flex-shrink-0">
-        Analytical Dashboard
-      </h2>
-      <div className="flex-grow text-white overflow-y-auto">
-        {renderContent()}
-      </div>
+          <h2 className="text-2xl font-bold text-[var(--theme-primary)] mb-4 flex-shrink-0">
+            Analytical Dashboard
+          </h2>
+          <div className="flex-grow text-white overflow-y-auto">
+            {renderContent()}
+          </div>
     </div>
   );
 };

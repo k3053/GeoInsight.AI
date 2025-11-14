@@ -2,7 +2,7 @@ import React from "react";
 
 const NDVILegend = ({ ndvi }) => {
   // ndvi can be stats.totals.ndvi or parsed insights under ndvi
-  const ndvi_estimate = ndvi?.data || ndvi || {};
+  const ndvi_estimate = ndvi?.data || ndvi?.ndvi_estimate || {};
   // const avg = raw.average_ndvi ?? raw.mean ?? ndvi?.average ?? null;
   // const latest = raw.latest_value ?? ndvi?.latest ?? null;
   // const period = raw.period || `${raw.startDate || ""} - ${raw.endDate || ""}`;
@@ -20,7 +20,7 @@ const NDVILegend = ({ ndvi }) => {
           <div className="text-lg font-medium">{avg != null ? avg.toFixed(3) : "N/A"}</div>
         </div> */}
   return (
-    <div className="mb-4 p-3 bg-gray-800 rounded text-sm">
+    <div className="mb-4 p-3 bg-gray-800 rounded text-lg">
       <h3 className="font-semibold mb-2">Vegetation (NDVI)</h3>
       <div className="grid grid-cols-2 gap-3">
         <div>

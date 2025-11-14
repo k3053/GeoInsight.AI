@@ -59,6 +59,7 @@ const getYDomain = (data) => {
 };
 
 const NDVIChart = ({ stats }) => {
+  console.log("NDVI Stats:", stats);
   const series = toSeries(stats);
   const yearsSeries = toYearsSeries(stats?.years);
   const seriesYDomain = getYDomain(series);
