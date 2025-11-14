@@ -13,8 +13,8 @@ from schemas import ChatRequest
 
 app = FastAPI(title="Location Intelligence", version="0.1")
 
-DIST_DIR = os.path.join("..", "frontend", "dist")
-ASSETS_DIR = os.path.join(DIST_DIR, "assets")
+# DIST_DIR = os.path.join("..", "frontend", "dist")
+# ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
 
 # Enable CORS for browser access (Swagger UI, web apps)
@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/root")
 def read_root():
     return {"message": "Main Page"}
 
@@ -151,6 +151,7 @@ def get_aqi():
     pass
 
 
-# Mount static frontend AFTER defining API routes to avoid intercepting API methods
-# app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-# app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
+DIST_DIR = os.path.join("..", "frontend", "dist")
+
+app.mount("/assets", StaticFiles(directory=os.path.join(DIST_DIR, "assets")), name="assets")
+app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="frontend")
