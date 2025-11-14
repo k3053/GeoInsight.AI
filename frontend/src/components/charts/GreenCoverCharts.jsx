@@ -42,18 +42,19 @@ const yearsToSeries = (yearsObj) => {
   if (Array.isArray(yearsObj)) return yearsObj;
   return Object.entries(yearsObj)
     .filter(([, v]) => v != null && !Number.isNaN(Number(v)))
-    .map(([year, value]) => ({ year: String(year), value: Number(value) }))
+    .map(([year, value]) => ({ year: String(year), value: Number(value)*1000 }))
     .sort((a, b) => Number(a.year) - Number(b.year));
 };
 
 /* Main component */
 export default function GreenCoverCharts({ stats = {} }) {
-  const greenRaw = stats?.data ?? stats?.totals?.green_cover?.value ?? null;
+  const Raw = stats?.data ?? stats?.totals?.green_cover?.value ?? null;
+  const greenRaw = (Raw*1000);
   const greenArea = Number(greenRaw) || 0;
 
   // find total area if provided, try several common fields
   let totalArea =
-    Number(stats?.total_area_m2 ?? stats?.totals?.area_m2 ?? stats?.area_m2 ?? stats?.total_area) || null;
+    Number(stats?.total_area_m2 ?? stats?.totals?.area_m2 ?? stats?.area_m2 ?? stats?.total_area) || 1000;
 
   // try bbox-based estimate if no explicit total area
   if (!totalArea) {
@@ -129,8 +130,8 @@ export default function GreenCoverCharts({ stats = {} }) {
               <LineChart data={yearsSeries} margin={{ top: 8, right: 20, left: 8, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey={yearsSeries[0].year ? "year" : "date"} tick={{ fontSize: 12 }} />
-                <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-                <Tooltip formatter={(v) => (v != null ? `${v}%` : v)} />
+                <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}`} />
+                <Tooltip formatter={(v) => (v != null ? `${v}` : v)} />
                 <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>

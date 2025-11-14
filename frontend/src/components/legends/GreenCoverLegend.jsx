@@ -13,16 +13,16 @@
 
 export default function GreenCoverLegend({ green }) {
   const greenArea = green?.data; 
+  const area = greenArea * 1000;
+  // find total area if provided, try several common fields
+  let totalArea = 1000;
 
   // find green area (m²)
   // const greenArea =
   //   Number(raw.green_area ?? raw.canopy_area_m2 ?? raw.area_m2 ?? raw.value ?? raw.green ?? raw.canopy_area) ||
   //   0;
 
-  // find total area (m²) from explicit fields or estimate from bbox/bounds
-  let totalArea = 6500000;
-
-  const percentage = (greenArea/totalArea) * 100;
+  const percentage = (area/totalArea) * 100;
 
   return (
     <div className="mb-4 p-3 bg-gray-800 rounded text-lg">
@@ -32,7 +32,7 @@ export default function GreenCoverLegend({ green }) {
         <div>
           <p className="text-md text-gray-400">Current green cover</p>
           <div className="text-lg font-medium">
-            {greenArea ? `${Number(greenArea).toLocaleString()} m²` : "N/A"}
+            {area ? `${Number(area).toLocaleString()} m²` : "N/A"}
           </div>
         </div>
 

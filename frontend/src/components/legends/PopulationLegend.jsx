@@ -13,7 +13,7 @@ const PopulationLegend = ({ population }) => {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className="text-sm text-gray-400">Current</p>
-          <div className="text-lg font-medium">{current != null ? current.toLocaleString() : "N/A"}</div>
+          <div className="text-lg font-medium">{current != null ? (current*1000000).toLocaleString() : "N/A"}</div>
         </div>
         {/* <div>
           <p className="text-xs text-gray-400">Peak</p>

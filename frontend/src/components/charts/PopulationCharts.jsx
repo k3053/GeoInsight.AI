@@ -10,26 +10,36 @@ const COLORS = ["#42A5F5", "#90CAF9", "#66BB6A", "#FFA726", "#F4511E", "#E53935"
 
 export default function PopulationCharts({ stats = {} }) {
   // current population number (accept stats.data or fallback)
-  const current = Number(stats.data ?? stats.totals?.population ?? 0) || 0;
+  const POP_MULTIPLIER = 1_000_000;
+
+  const currentRaw = Number(stats.data ?? stats.totals?.population ?? 0) || 0;
+  const current = currentRaw * POP_MULTIPLIER;
+
   // max scale (allow override from stats.max, else default 50000)
-  const maxScale = Number(stats.max ?? 50000) || 50000;
+  const maxScale = Number(stats.max ?? 5000000) || 5000000;
   const percent = Math.min(100, (current / maxScale) * 100);
+
+  // Build years series from stats.years (ignore null/undefined)
+  const yearsSeries = Array.isArray(stats?.years)
+    ? stats.years.map((e) => ({
+        year: String(e.year),
+        value: Number(e.value ?? 0) * POP_MULTIPLIER,
+      }))
+    : stats?.years && typeof stats.years === "object"
+    ? Object.entries(stats.years)
+        .filter(([, v]) => v != null && !Number.isNaN(Number(v)))
+        .map(([year, value]) => ({
+          year: String(year),
+          value: Number(value) * POP_MULTIPLIER,  // << apply multiplier
+        }))
+        .sort((a, b) => Number(a.year) - Number(b.year))
+    : [];
 
   // Pie data: current % and remaining
   const pieData = [
     { name: `Current (${current})`, value: current, color: COLORS[0] },
     { name: `Remaining to ${maxScale}`, value: Math.max(0, maxScale - current), color: "#eeeeee" },
   ];
-
-  // Build years series from stats.years (ignore null/undefined)
-  const yearsSeries = Array.isArray(stats?.years)
-    ? stats.years // support array shape if provided
-    : stats?.years && typeof stats.years === "object"
-    ? Object.entries(stats.years)
-        .filter(([, v]) => v != null && !Number.isNaN(Number(v)))
-        .map(([year, value]) => ({ year: String(year), value: Number(value) }))
-        .sort((a, b) => Number(a.year) - Number(b.year))
-    : [];
 
   // Summary text
   const summaryText = stats?.summary ? String(stats.summary) : null;

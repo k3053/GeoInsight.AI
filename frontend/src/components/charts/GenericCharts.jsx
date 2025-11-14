@@ -22,7 +22,7 @@ const toYearsSeries = (yearsObj) => {
   if (Array.isArray(yearsObj)) return yearsObj;
   return Object.entries(yearsObj)
     .filter(([, v]) => v != null && !Number.isNaN(Number(v)))
-    .map(([year, value]) => ({ year: String(year), value: Number(value) }))
+    .map(([year, value]) => ({ year: String(year), value: Number(value)*100 }))
     .sort((a, b) => Number(a.year) - Number(b.year));
 };
 
