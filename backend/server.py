@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import os
 import requests
 import googlemaps
-import overpy
 from mongo_connect import save_to_mongodb
 
 load_dotenv()
@@ -13,10 +12,6 @@ GOOGLEMAPS_API_KEY = os.getenv("GOOGLEMAPS_API_KEY")
 gmaps = googlemaps.Client(key=GOOGLEMAPS_API_KEY)
 
 mcp = FastMCP("Demo")
-
-@mcp.tool()
-def add(num1: int, num2: int):
-    return num1 + num2
 
 @mcp.tool()
 def web_search(query: str):
@@ -387,113 +382,6 @@ def compute_area_insights(
     except Exception as e:
         print(f"Error: {e}")
         return None
-
-@mcp.tool()
-def count_nearby_buildings(latitude: float, longitude: float, radius_meters: int = 1000):
-    """
-    Counts buildings and analyzes their types around a specific lat/lon point using OpenStreetMap data.
-    
-    Parameters:
-    - latitude: The latitude of the center point.
-    - longitude: The longitude of the center point.
-    - radius_meters: The search radius in meters. Defaults to 1000m (1km).
-    
-    Returns:
-    A JSON object (dictionary) with the total building count, a breakdown of building types, and a list of building details.
-    """
-    api = overpy.Overpass()
-    
-    # Overpass API query to find buildings within the specified radius
-    query = f"""
-    [out:json];
-    (
-        way["building"](around:{radius_meters},{latitude},{longitude});
-        relation["building"](around:{radius_meters},{latitude},{longitude});
-    );
-    out body;
-    >;
-    out skel qt;
-    """
-    
-    try:
-        result = api.query(query)
-        
-        total_buildings = len(result.ways) + len(result.relations)
-        
-        building_types = {}
-        building_details = []
-        
-        all_elements = list(result.ways) + list(result.relations)
-
-        for element in all_elements:
-            # Get building type, default to 'yes' if not specified
-            building_type = element.tags.get("building", "yes")
-            building_types[building_type] = building_types.get(building_type, 0) + 1
-            
-            # Get representative coordinates for each building
-            center_node = None
-            if hasattr(element, 'center_lat'):
-                center_node = {"lat": float(element.center_lat), "lon": float(element.center_lon)}
-            elif element.nodes:
-                center_node = {"lat": float(element.nodes[0].lat), "lon": float(element.nodes[0].lon)}
-
-            building_details.append({
-                "id": element.id,
-                "type": building_type,
-                "name": element.tags.get("name"),
-                "coords": center_node
-            })
-            
-            data = {
-                "totalBuildings": total_buildings,
-                "buildingTypes": building_types,
-                "points": building_details,
-                "location": {"lat": latitude, "lon": longitude},
-                "radius": radius_meters
-            }
-            
-            # Save to MongoDB
-            query_params = {
-                "latitude": latitude,
-                "longitude": longitude,
-                "radius_meters": radius_meters
-            }
-            save_to_mongodb("buildings", data, query_params)
-            
-            return data
-    
-    except Exception as e:
-        print(f"Error in count_nearby_buildings: {e}")
-        return None
-
-# NOTE: Dont remove this
-# @mcp.tool()
-# def validate_address(region_code: str, locality: str, address_lines: list):
-#     """
-#     Validate an address using Google Address Validation API.
-#     Example: region_code='US', locality='Mountain View', address_lines=['1600 Amphitheatre Pkwy']
-#     """
-#     url = f"https://addressvalidation.googleapis.com/v1:validateAddress?key={GOOGLEMAPS_API_KEY}"
-
-#     headers = {"Content-Type": "application/json"}
-
-#     payload = {
-#         "address": {
-#             "regionCode": region_code,
-#             "locality": locality,
-#             "addressLines": address_lines
-#         }
-#     }
-
-#     try:
-#         response = requests.post(url, headers=headers, json=payload, timeout=30)
-#         response.raise_for_status()
-#         return response.json()
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return None
-
-
 
 if __name__ == "__main__":
     import sys

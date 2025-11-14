@@ -6,16 +6,11 @@ import asyncio
 import logging
 import os
 import overpy
-from mongo_connect import save_to_mongodb, fetch_from_mongodb
-from fastapi import Query
+from mongo_connect import save_to_mongodb
 from client import run_agent
 from schemas import ChatRequest
 
 app = FastAPI(title="Location Intelligence", version="0.1")
-
-# DIST_DIR = os.path.join("..", "frontend", "dist")
-# ASSETS_DIR = os.path.join(DIST_DIR, "assets")
-
 
 # Enable CORS for browser access (Swagger UI, web apps)
 app.add_middleware(
