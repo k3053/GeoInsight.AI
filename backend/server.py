@@ -21,7 +21,6 @@ def add(num1: int, num2: int):
 @mcp.tool()
 def web_search(query: str):
     """This tool does the web search using the users query"""
-    logger.info("CALLING TOOL: WEB SEARCH")
     search = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
     response = search.run(query)
     return response
