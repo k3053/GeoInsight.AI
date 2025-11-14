@@ -1,7 +1,7 @@
 import React from "react";
 
 const PrecipitationLegend = ({ precipitation }) => {
-  const total = precipitation?.data || precipitation || {};
+  const total = precipitation?.data || precipitation?.precip_mm || {};
   // const total = raw.total_mm ?? precipitation?.total ?? null;
   // const prob = raw.probability_percent ?? precipitation?.probability ?? null;
   // const max = raw.max_mm ?? raw.peak_mm ?? null;

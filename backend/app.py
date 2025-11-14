@@ -96,91 +96,33 @@ OVERPASS_ENDPOINTS = [
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.openstreetmap.ru/api/interpreter"
 ]
-BUILDING_CATEGORIES = {
-    "school": "school",
-    "college": "college",
-    "university": "college",
-    "hospital": "hospital",
-    "clinic": "hospital",
-    "doctor": "hospital",
-    "kindergarten": "school",
-    "library": "education",
-    "bank": "bank",
-    "restaurant": "restaurant",
-    "cafe": "restaurant",
-    "supermarket": "supermarket",
-    "pharmacy": "pharmacy",
-    "police": "police",
-    "fire_station": "fire_station",
-}
 
-def limit_buildings(buildings, max_count=100):
-    if len(buildings) > max_count:
-        return buildings[:max_count]
-    return buildings
+# Haversine formula to compute distance between two lat/lon points
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371000  # radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
 
-def count_building_categories(buildings):
-    counts = {}
-
-    for b in buildings:
-        tags = b.get("tags", {})
-        building_type = tags.get("amenity") or tags.get("building") or ""
-
-        for key, category in BUILDING_CATEGORIES.items():
-            if key in building_type.lower():
-                counts[category] = counts.get(category, 0) + 1
-                break
-
-    return counts
-
-def build_summary_json(lat, lon, radius, buildings, counts):
-    return {
-        "filter": "Building Density",
-        "location": {
-            "latitude": lat,
-            "longitude": lon
-        },
-        "radius_meters": radius,
-        "building_count": len(buildings),
-        "categories": counts,
-        "timestamp": time.time()
-    }
-
-def save_building_summary(summary_json):
-    save_to_mongodb("building_summary", summary_json)
-
-def categorize_buildings(buildings):
-    result = {}
-    for b in buildings:
-        btype = (b.get("type") or "").lower()
-
-        # Try amenity tag if available
-        if "amenity" in b:
-            btype = b.get("amenity").lower()
-
-        for key, cat in BUILDING_CATEGORIES.items():
-            if key in btype:
-                result[cat] = result.get(cat, 0) + 1
-                break
-
-    return result
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 def get_building_data(latitude: float, longitude: float, radius_meters: int = 500, max_retries: int = 3):
-    # 1️⃣ Check MongoDB Cache First
-    tolerance = 0.0005  # ~50m
+    # 1️⃣ Check if this location already exists in MongoDB (within small tolerance)
+    tolerance = 0.0005  # roughly ~50 meters latitude/longitude tolerance
     q = {
         "latitude": {"$gte": latitude - tolerance, "$lte": latitude + tolerance},
         "longitude": {"$gte": longitude - tolerance, "$lte": longitude + tolerance},
-        "radius_meters": radius_meters,
-        "filter": "building_summary"
+        "radius_meters": radius_meters
     }
 
     docs = fetch_from_mongodb("filter_responses", filter_query=q, limit=1)
     if docs:
-        print("[Cache] Returning building summary from MongoDB.")
-        return docs[0]["data"]
+        print("[Cache] Returning building data from MongoDB cache.")
+        return docs[0]["data"]  # assuming data stored under key "data"
 
-    # 2️⃣ Fetch Raw Buildings via Overpass
+    # 2️⃣ If not in cache → run existing Overpass logic
     query = f"""
     [out:json];
     (
@@ -199,73 +141,71 @@ def get_building_data(latitude: float, longitude: float, radius_meters: int = 50
                 api = overpy.Overpass(url=endpoint)
                 result = api.query(query)
 
-                all_elements = list(result.ways) + list(result.relations)
+                total_buildings = len(result.ways) + len(result.relations)
                 building_details = []
+                all_elements = list(result.ways) + list(result.relations)
 
-                # Convert raw OSM → compact structure
                 for element in all_elements:
                     center_node = None
                     try:
-                        if hasattr(element, "center_lat") and element.center_lat:
+                        if hasattr(element, 'center_lat') and element.center_lat and element.center_lon:
                             center_node = {"lat": float(element.center_lat), "lon": float(element.center_lon)}
-                        elif element.nodes:
+                        elif element.nodes and len(element.nodes) > 0:
                             node = element.nodes[0]
-                            center_node = {"lat": float(node.lat), "lon": float(node.lon)}
-                    except:
-                        continue
+                            if node.lat and node.lon:
+                                center_node = {"lat": float(node.lat), "lon": float(node.lon)}
+                    except Exception as conv_err:
+                        print(f"Error converting coordinates for element {element.id}: {conv_err}")
 
-                    if not center_node:
-                        continue
+                    if center_node:
+                        b_type = element.tags.get("building", "yes")
+                        b_name = element.tags.get("name")
+                        distance = haversine_distance(latitude, longitude, center_node["lat"], center_node["lon"])
+                        building_details.append({
+                            "id": element.id,
+                            "type": b_type,
+                            "name": b_name,
+                            "coords": center_node,
+                            "distance_m": round(distance, 2)
+                        })
 
-                    b_type = element.tags.get("building", "unknown")
+                response = {
+                    "totalBuildings": total_buildings,
+                    "points": building_details,
+                }
 
-                    building_details.append({
-                        "id": element.id,
-                        "type": b_type,
-                        "lat": center_node["lat"],
-                        "lon": center_node["lon"],
-                    })
-
-                # 3️⃣ LIMIT buildings to max 100
-                building_details = limit_buildings(building_details, max_count=100)
-
-                # 4️⃣ CATEGORY COUNT
-                category_counts = categorize_buildings(building_details)
-
-                # 5️⃣ Build Final Summary JSON
-                summary = build_summary_json(latitude, longitude, radius_meters, building_details, category_counts)
-
-                # 6️⃣ Save to MongoDB
+                # 3️⃣ Save new response in MongoDB for caching
                 record = {
                     "latitude": latitude,
                     "longitude": longitude,
                     "radius_meters": radius_meters,
-                    "filter": "building_summary",
-                    "data": summary,
-                    "timestamp": datetime.utcnow(),
+                    "data": response,
+                    "timestamp": datetime.utcnow()
                 }
-
                 save_to_mongodb("filter_responses", record)
-                print("[Cache] Stored building summary in MongoDB.")
+                print("[Cache] Stored new building data in MongoDB.")
 
-                return summary
+                return response
 
             except overpy.exception.OverpassTooManyRequests:
                 print(f"[Overpass] Too many requests on {endpoint}, retrying...")
                 time.sleep(random.uniform(2, 5))
-
             except overpy.exception.OverpassGatewayTimeout:
-                print(f"[Overpass] Timeout on {endpoint}, retrying...")
+                print(f"[Overpass] Timeout from {endpoint}, retrying...")
                 time.sleep(random.uniform(2, 5))
-
             except Exception as e:
-                print(f"[Overpass ERROR] {e}")
-                continue
+                if "load too high" in str(e).lower():
+                    print(f"[Overpass] Server load too high on {endpoint}, switching endpoint...")
+                    time.sleep(random.uniform(3, 7))
+                    continue
+                else:
+                    print(f"[Overpass] Error from {endpoint}: {e}")
+                    continue
 
-        print(f"[Retry {attempt + 1}/{max_retries}] waiting...")
+        print(f"[Retry {attempt+1}/{max_retries}] Waiting before next retry...")
         time.sleep(2 ** attempt)
 
-    print("[Overpass] All endpoints failed.")
+    print("[Overpass] All endpoints failed after retries.")
     return None
         
 @app.get("/data/buildings")
@@ -467,8 +407,8 @@ async def fetch_or_generate_filter_data(body: ChatRequest, filter_name: str):
         # -----------------------------------------------------
         # 1) SCRAPER TRY
         # -----------------------------------------------------
-        scraped = scrape_filter_data(filter_name, body.message or "")
-
+        # scraped = scrape_filter_data(filter_name, body.message or "")
+        scraped = "error"
         if scraped and "error" not in scraped and "note" not in scraped:
             print(f"[SCRAPER SUCCESS] {filter_name}")
             insights = scraped
@@ -690,6 +630,7 @@ async def chat_filter_query(
     #     query["longitude"] = body.longitude
 
     docs = fetch_from_mongodb("filter_responses", filter_query=query, limit=1)
+    # docs = ""
     if docs:
         print(f"[MONGO HIT] {filter_name}")
         doc = docs[0]
