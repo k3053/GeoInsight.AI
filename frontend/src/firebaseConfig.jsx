@@ -9,13 +9,13 @@ import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyA7xaACnNx7tVjGx6tP93lfzcnQ5J0fYX8",
-  authDomain: "geoinsightai-645e8.firebaseapp.com",
-  projectId: "geoinsightai-645e8",
-  storageBucket: "geoinsightai-645e8.firebasestorage.app",
-  messagingSenderId: "673653936465",
-  appId: "1:673653936465:web:003507bad71b95e5b0c370",
-  measurementId: "G-EFC5GP81TS"
+  apiKey: "AIzaSyADnoSH6nqpzKJYHC6Th1NPoGBZPNTnmV8",
+  authDomain: "project-c671a.firebaseapp.com",
+  projectId: "project-c671a",
+  storageBucket: "project-c671a.firebasestorage.app",
+  messagingSenderId: "970392879404",
+  appId: "1:970392879404:web:f34d78616d26d81161ec89",
+  measurementId: "G-8K3JG8GVZC"
 };
 
 // Initialize Firebase
