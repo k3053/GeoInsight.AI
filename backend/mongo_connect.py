@@ -4,7 +4,8 @@ from datetime import datetime
 from bson import ObjectId
 import json, os
 
-MONGODB_URI = os.getenv("MONGO_URI")
+# MONGODB_URI = os.getenv("MONGO_URI")
+MONGODB_URI = "mongodb+srv://deepvgadhiya:OCCWFfX0zy2KkAZ8@cluster0.xp5pd.mongodb.net/"
 client = MongoClient(
     MONGODB_URI
 )
