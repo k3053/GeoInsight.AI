@@ -120,10 +120,7 @@ const Header = ({ searchQuery, setSearchQuery, onSearch, locationSelected, handl
               className="px-5 py-3 text-left hover:bg-gray-800 text-white border-b border-gray-800"
               onClick={() => { setMenuOpen(false); navigate('/Chatbot'); }}
             >Chatbot</button>
-            <button
-              className="px-5 py-3 text-left hover:bg-gray-800 text-white border-b border-gray-800"
-              onClick={() => { setMenuOpen(false); navigate('/History'); }}
-            >History</button>
+            
             <button
               className="px-5 py-3 text-left hover:bg-gray-800 text-red-500"
               onClick={() => { setMenuOpen(false); handleLogout(); }}
