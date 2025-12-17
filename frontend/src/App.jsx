@@ -43,8 +43,6 @@ export default function App() {
         // Fetch the user's role after they are authenticated
         const role = await fetchUserRole(currentUser.uid);
         setUserRole(role);
-      } else {
-        setUserRole(null);
       }
       setLoading(false);
     });
